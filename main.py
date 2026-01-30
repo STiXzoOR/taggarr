@@ -37,6 +37,17 @@ TARGET_GENRE = os.getenv("TARGET_GENRE")
 TARGET_LANGUAGES = [lang.strip().lower() for lang in os.getenv("TARGET_LANGUAGES", "en").split(",")]
 ADD_TAG_TO_GENRE = os.getenv("ADD_TAG_TO_GENRE", "false").lower() == "true"
 
+# Radarr config
+RADARR_API_KEY = os.getenv("RADARR_API_KEY")
+RADARR_URL = os.getenv("RADARR_URL")
+ROOT_MOVIE_PATH = os.getenv("ROOT_MOVIE_PATH")
+TARGET_GENRE_MOVIES = os.getenv("TARGET_GENRE_MOVIES")
+TAGGARR_MOVIES_JSON_PATH = os.path.join(ROOT_MOVIE_PATH, "taggarr.json") if ROOT_MOVIE_PATH else None
+
+# Service detection
+SONARR_ENABLED = all([SONARR_API_KEY, SONARR_URL, ROOT_TV_PATH])
+RADARR_ENABLED = all([RADARR_API_KEY, RADARR_URL, ROOT_MOVIE_PATH])
+
 
 # === LOGGING ===
 def setup_logging():
