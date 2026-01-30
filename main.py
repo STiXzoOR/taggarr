@@ -22,7 +22,7 @@ load_dotenv()
 SONARR_API_KEY = os.getenv("SONARR_API_KEY")
 SONARR_URL = os.getenv("SONARR_URL")
 ROOT_TV_PATH = os.getenv("ROOT_TV_PATH")
-TAGGARR_JSON_PATH = os.path.join(ROOT_TV_PATH, "taggarr.json")
+TAGGARR_JSON_PATH = os.path.join(ROOT_TV_PATH, "taggarr.json") if ROOT_TV_PATH else None
 RUN_INTERVAL_SECONDS = int(os.getenv("RUN_INTERVAL_SECONDS", 7200))
 START_RUNNING = os.getenv("START_RUNNING", "true").lower() == "true"
 QUICK_MODE = os.getenv("QUICK_MODE", "false").lower() == "true"
@@ -81,6 +81,8 @@ logger = setup_logging()
 
 # === JSON STORAGE ===
 def load_taggarr():
+    if not TAGGARR_JSON_PATH:
+        return {"series": {}}
     if os.path.exists(TAGGARR_JSON_PATH):
         try:
             logger.info(f"📍 taggarr.json found at {TAGGARR_JSON_PATH}")
