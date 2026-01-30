@@ -6,7 +6,14 @@ Python tool that scans media libraries and tags TV shows based on audio dubs (So
 
 **Run:** `python main.py` with required env vars: `SONARR_API_KEY`, `SONARR_URL`, `ROOT_TV_PATH`
 
-**Single-file app:** All code lives in `main.py`
+**Package structure:** Code organized in `taggarr/` package:
+
+- `config.py` - Environment variables
+- `services/` - Sonarr, Radarr, media analysis
+- `storage/` - JSON persistence
+- `processors/` - TV and movie scanning logic
+- `nfo.py` - NFO file handling
+- `languages.py` - Language code utilities
 
 ## Tagging Logic
 
