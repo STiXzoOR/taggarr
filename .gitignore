@@ -8,3 +8,4 @@ old/
 *.py
 *.log
 !main.py
+.worktrees/
