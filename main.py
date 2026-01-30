@@ -427,6 +427,60 @@ def get_sonarr_series(path):
         logger.warning(f"Failed to fetch Sonarr series metadata: {e}")
     return None
 
+
+# === RADARR ===
+def get_radarr_movies():
+    """Fetch all movies from Radarr API."""
+    try:
+        resp = requests.get(f"{RADARR_URL}/api/v3/movie", headers={"X-Api-Key": RADARR_API_KEY})
+        return resp.json()
+    except Exception as e:
+        logger.warning(f"Failed to fetch Radarr movies: {e}")
+        return []
+
+
+def get_radarr_movie_by_path(path):
+    """Find a specific movie by its folder path."""
+    try:
+        resp = requests.get(f"{RADARR_URL}/api/v3/movie", headers={"X-Api-Key": RADARR_API_KEY})
+        for m in resp.json():
+            if os.path.basename(m['path']) == os.path.basename(path):
+                return m
+    except Exception as e:
+        logger.warning(f"Radarr lookup failed: {e}")
+    return None
+
+
+def tag_radarr(movie_id, tag, remove=False, dry_run=False):
+    """Add or remove a tag from a movie in Radarr."""
+    if dry_run:
+        logger.info(f"[Dry Run] Would {'remove' if remove else 'add'} tag '{tag}' for movie ID {movie_id}")
+        return
+    try:
+        tag_id = None
+        r = requests.get(f"{RADARR_URL}/api/v3/tag", headers={"X-Api-Key": RADARR_API_KEY})
+        for t in r.json():
+            if t["label"].lower() == tag.lower():
+                tag_id = t["id"]
+        if tag_id is None and not remove:
+            r = requests.post(f"{RADARR_URL}/api/v3/tag", headers={"X-Api-Key": RADARR_API_KEY}, json={"label": tag})
+            tag_id = r.json()["id"]
+            logger.debug(f"Created new Radarr tag '{tag}' with ID {tag_id}")
+
+        m_url = f"{RADARR_URL}/api/v3/movie/{movie_id}"
+        m_data = requests.get(m_url, headers={"X-Api-Key": RADARR_API_KEY}).json()
+        if remove and tag_id in m_data["tags"]:
+            m_data["tags"].remove(tag_id)
+            logger.debug(f"Removing Radarr tag ID {tag_id} from movie {movie_id}")
+        elif not remove and tag_id not in m_data["tags"]:
+            m_data["tags"].append(tag_id)
+            logger.debug(f"Adding Radarr tag ID {tag_id} to movie {movie_id}")
+        requests.put(m_url, headers={"X-Api-Key": RADARR_API_KEY}, json=m_data)
+        time.sleep(0.5)
+    except Exception as e:
+        logger.warning(f"Failed to tag Radarr: {e}")
+
+
 def safe_parse_nfo(path): #function to read carefully corrupted nfo files
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
