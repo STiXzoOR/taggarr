@@ -1,11 +1,9 @@
 .env
 venv
 venv/
-taggarr/
 logs/
 old/
 .dockerignore
-*.py
 *.log
-!main.py
 .worktrees/
+__pycache__/
