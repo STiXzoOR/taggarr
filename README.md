@@ -1,23 +1,16 @@
-
-
 <p align="center">
   <img width="451px" src="https://raw.githubusercontent.com/BassHous3/taggarr/refs/heads/main/assets/logo/banner_transparent.png" alt=""></img>
   <p></p>
 </p>
 
-
-
-
 > [!TIP]
-> 
+>
 > - **Don't feel like watching subs?**
->
 > - **You have no idea which of your content is dubbed?**
->
 > - **Or not sure if Sonarr got the right dub?**
 >
 > **Don't worry, I got you covered.**
-> 
+>
 > **So finally.. you'll be able to filter by dubbed shows.**
 >
 > <img width="158" height="386" alt="image" src="https://github.com/user-attachments/assets/ee3a6357-668f-436b-8afe-6425647fb87a" />
@@ -28,27 +21,27 @@ Taggarr is a tool for scanning and tagging your media content whether if your me
 
 This way, you can filter your shows based on if they're dubbed or not, using tags within your Sonarr (for managing) or any media player that supports tagging (for watching). Taggarr will also save all the information in a JSON file and will tell you which show, season, episode and language is the wrong-dub.
 <br></br>
+
 > [!NOTE]
 > **How it Works:**
-> 
+>
 > - `NO TAG` The show is only in its original language.
 > - `DUB` The show contains ALL of your target languages.
 > - `SEMI-DUB` The show missing at least one of your target languages or some episodes are missing the dub.
 > - `WRONG-DUB` The show is missing your target languages and contains another language (excluding original language).
 > - `ADD_TAG_TO_GENRE` The tag list in the media players can be massive. This function will add the tag `Dub` in the genre section only for `DUB` shows. From version [0.4.19](https://github.com/BassHous3/taggarr/releases/tag/0.4.19).
 
-
 > [!IMPORTANT]
 > **Quick Start:**
 >
 > 1. **Sonarr**  
-> Make sure you have `METADATA` turned on with KODI/Emby Standard and all checkboxes are turned on.
+>    Make sure you have `METADATA` turned on with KODI/Emby Standard and all checkboxes are turned on.
 > 2. **Docker**  
-> Pull the Docker image from `docker.io/basshous3/taggarr:latest`
+>    Pull the Docker image from `docker.io/basshous3/taggarr:latest`
 > 3. **Configs**  
-> Make sure to use `/tv` as path to your **CONTAINER** (not host). Check out [example of yaml configs](https://github.com/BassHous3/taggarr?tab=readme-ov-file#configuration-example)  below. 
+>    Make sure to use `/tv` as path to your **CONTAINER** (not host). Check out [example of yaml configs](https://github.com/BassHous3/taggarr?tab=readme-ov-file#configuration-example) below.
 > 4. **Media players**  
-> After tags are applied they should work in the media players, if not, scan TV's library metadata using `Replace all metadata` method (leave `Replace Images` unchecked).
+>    After tags are applied they should work in the media players, if not, scan TV's library metadata using `Replace all metadata` method (leave `Replace Images` unchecked).
 
 <br></br>
 [![GitHub last commit](https://img.shields.io/github/release-date/BassHous3/taggarr?style=for-the-badge&logo=github)](https://github.com/BassHous3/taggarr)
@@ -71,7 +64,7 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
   </tr>
   <tr>
     <td align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
-    <td align="center"><img src="https://img.shields.io/badge/Status-Not%20Ready-red?style=flat-square" /></td>
+    <td align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
     <td align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
   </tr>
     <tr>
@@ -99,8 +92,10 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 <h3 align="center"> <a href="https://ko-fi.com/basshouse" target="_blank"><img src="https://cdn.prod.website-files.com/5c14e387dab576fe667689cf/670f5a0172b90570b1c21dab_kofi_logo.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 150px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> </h3> <br><br>
 
 ## INFO & QUICK START
+
 > [!NOTE]
 > **Features:**
+>
 > - Taggarr will save the information of your media in a JSON file located at the root folder of your TV media.
 > - Taggarr uses a lightweight scanning method, it reads the name of audio tracks. It DOES NOT scan the audio of your content.
 > - Once your library was scanned and indexed in the JSON file, it will only scan for new or modified folders.
@@ -124,7 +119,7 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 ## IMPORTANT & DISCLAIMER
 
 > [!WARNING]
-> - Currently supporting only Sonarr. Support for Radarr will come in the upcoming updates as well.
+>
 > - This project is still in very early stages and can have bugs. Currently only tested on Linux.
 > - Coding is only a hobby of mine and I am still learning, use this program at your own discretion.
 > - Make sure to read the documentation properly.
@@ -132,50 +127,57 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 <br>
 
 ## CREDITS
+
 Special thanks for inspiration goes to:
+
 - [Cleanuparr](https://github.com/Cleanuparr/Cleanuparr)
 - [Huntarr](https://github.com/plexguide/Huntarr)
 - [Sonarr](https://github.com/Sonarr/Sonarr) & [Radarr](https://github.com/Radarr/Radarr)
 
 <br>
 
-
-
 ## CONFIGURATION EXAMPLE
 
 ```yaml
-
 name: Taggarr
 services:
   taggarr:
-      image: docker.io/basshous3/taggarr:latest
-      container_name: taggarr
-      environment:
-        - SONARR_API_KEY=your_api_key #REQUIRED
-        - SONARR_URL=http://sonarr:8989 #REQUIRED
-        - RUN_INTERVAL_SECONDS=7200 #OPTIONAL - default is 2 hours.
-        - START_RUNNING=true #OPTIONAL        
-        - QUICK_MODE=false #OPTIONAL 
-        - DRY_RUN=false #OPTIONAL 
-        - WRITE_MODE=0 #OPTIONAL - 0=NONE, 1=REWRITE, 2=REMOVE
-        - TAG_DUB=dub #OPTIONAL
-        - TAG_SEMI=semi-dub #OPTIONAL
-        - TAG_WRONG_DUB=wrong-dub #OPTIONAL
-        - LOG_LEVEL=INFO #OPTIONAL - DEBUG/INFO/WARNING/ERROR
-        - TARGET_GENRE=Anime #OPTIONAL - default is all genres
-        - TARGET_LANGUAGES=english, french # Supports multiple languages, comma-separated en, fr, de, etc. are also acceptable entries
-        - ADD_TAG_TO_GENRE=true #OPTIONAL
-      volumes:
-        - /path/to/your/TV:/tv # Make sure to point your media path host to "/tv" container path
-        - /var/log/taggarr:/logs # OPTIONAL - recommended path for logs
-      restart: unless-stopped
-      logging:
-        driver: json-file
-        options:
-          max-size: "10m"
-          max-file: "3"
-  
-  ```
+    image: docker.io/basshous3/taggarr:latest
+    container_name: taggarr
+    environment:
+      # Sonarr (TV Shows) - set these to enable TV show scanning
+      - SONARR_API_KEY=your_sonarr_api_key
+      - SONARR_URL=http://sonarr:8989
+      - TARGET_GENRE=Anime #OPTIONAL - filter TV shows by genre
+
+      # Radarr (Movies) - set these to enable movie scanning
+      - RADARR_API_KEY=your_radarr_api_key
+      - RADARR_URL=http://radarr:7878
+      - TARGET_GENRE_MOVIES=Anime #OPTIONAL - filter movies by genre
+
+      # Common options
+      - TARGET_LANGUAGES=english, french # Supports multiple languages, comma-separated
+      - RUN_INTERVAL_SECONDS=7200 #OPTIONAL - default is 2 hours
+      - START_RUNNING=true
+      - QUICK_MODE=false
+      - DRY_RUN=false #OPTIONAL - recommended for first time to avoid writing tags
+      - WRITE_MODE=0 #OPTIONAL - 0=NONE, 1=REWRITE, 2=REMOVE
+      - TAG_DUB=dub
+      - TAG_SEMI=semi-dub
+      - TAG_WRONG_DUB=wrong-dub
+      - LOG_LEVEL=INFO #OPTIONAL - DEBUG/INFO/WARNING/ERROR
+      - ADD_TAG_TO_GENRE=false #OPTIONAL - adds "Dub" genre for fully dubbed content
+    volumes:
+      - /path/to/your/TV:/tv # TV shows - point to "/tv" container path
+      - /path/to/your/Movies:/movies # Movies - point to "/movies" container path
+      - /var/log/taggarr:/logs # OPTIONAL - recommended path for logs
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+```
 
 <details>
 <summary><span style="font-size: 10em;"><strong>JSON FILE WITH TARGET LANGUAGES ENGLISH AND FRENCH</strong></span></summary>
@@ -183,58 +185,58 @@ services:
 ```json
 
 "/tv/Example Show 1": {
-    "display_name": "Example Show 1",
-      "tag": "semi-dub",
-      "last_scan": "2025-06-26T19:22:11.769510Z",
-      "original_language": "japanese",
-      "seasons": {
-        "Season 1": {
-          "episodes": 1,
-          "original_dub": ["E01"],
-          "dub": ["E01:en"],
-          "missing_dub": ["E01:fr"],
-          "unexpected_languages": [],
-          "last_modified": 1749519136.4969385,
-          "status": "semi-dub"
-        },
-        "Season 2": {
-          "episodes": 1,
-          "original_dub": ["E01"],
-          "dub": ["E01:en"],
-          "missing_dub": ["E01:fr"],
-          "unexpected_languages": [],
-          "last_modified": 1749518483.8193643,
-          "status": "semi-dub"
-        },
-        "Season 3": {
-          "episodes": 1,
-          "original_dub": ["E01"],
-          "dub": [],
-          "missing_dub": ["E01:en, fr"],
-          "unexpected_languages": [],
-          "last_modified": 1750725575.362786,
-          "status": "original"
-        }
-      },
-      "last_modified": 1749519136.4969385
-    },
+"display_name": "Example Show 1",
+"tag": "semi-dub",
+"last_scan": "2025-06-26T19:22:11.769510Z",
+"original_language": "japanese",
+"seasons": {
+"Season 1": {
+"episodes": 1,
+"original_dub": ["E01"],
+"dub": ["E01:en"],
+"missing_dub": ["E01:fr"],
+"unexpected_languages": [],
+"last_modified": 1749519136.4969385,
+"status": "semi-dub"
+},
+"Season 2": {
+"episodes": 1,
+"original_dub": ["E01"],
+"dub": ["E01:en"],
+"missing_dub": ["E01:fr"],
+"unexpected_languages": [],
+"last_modified": 1749518483.8193643,
+"status": "semi-dub"
+},
+"Season 3": {
+"episodes": 1,
+"original_dub": ["E01"],
+"dub": [],
+"missing_dub": ["E01:en, fr"],
+"unexpected_languages": [],
+"last_modified": 1750725575.362786,
+"status": "original"
+}
+},
+"last_modified": 1749519136.4969385
+},
 "/tv/Example Show 2": {
-    "display_name": "Example Show 2",
-      "tag": "dub-en,fr",
-      "last_scan": "2025-06-26T19:23:55.967659Z",
-      "original_language": "french",
-      "seasons": {
-        "Season 1": {
-          "episodes": 1,
-          "original_dub": ["E01"],
-          "dub": ["E01:en, fr"],
-          "missing_dub": [],
-          "unexpected_languages": [],
-          "last_modified": 1749517909.2880175,
-          "status": "fully-dub"
-        }
-      },
-      "last_modified": 1749517909.2880175
+"display_name": "Example Show 2",
+"tag": "dub-en,fr",
+"last_scan": "2025-06-26T19:23:55.967659Z",
+"original_language": "french",
+"seasons": {
+"Season 1": {
+"episodes": 1,
+"original_dub": ["E01"],
+"dub": ["E01:en, fr"],
+"missing_dub": [],
+"unexpected_languages": [],
+"last_modified": 1749517909.2880175,
+"status": "fully-dub"
+}
+},
+"last_modified": 1749517909.2880175
 },
 
 ```
@@ -243,15 +245,16 @@ services:
 
 <details>
 <summary><span style="font-size: 10em;"><strong>SCREENSHOTS ON HOW TO USE TAG FILTERING</strong></span></summary>
-  
+
 
 ## Sonarr
 <img width="550px" src="assets/images/sonarr_.jpg" alt=""></img>
 <br><br>
 ## Emby & Jellyfin
-<img width="522px" src="assets/images/emby.png" alt=""></img>  <img width="250px" src="assets/images/jellyfin.jpg" alt=""></img> 
+<img width="522px" src="assets/images/emby.png" alt=""></img>  <img width="250px" src="assets/images/jellyfin.jpg" alt=""></img>
 
 </details>
 
 
 
+```
