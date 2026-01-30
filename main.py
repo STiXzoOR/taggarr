@@ -623,6 +623,46 @@ def update_nfo_tag(nfo_path, tag_value, dry_run=False):
         logger.warning(f"❌ Failed to update <tag> in NFO: {e}")
 
 
+def update_movie_nfo(nfo_path, tag_value, dry_run=False):
+    """
+    Updates <tag> in a movie NFO file.
+    Movie NFOs use <movie> as root element instead of <tvshow>.
+    """
+    try:
+        tree = ET.parse(nfo_path)
+        root = tree.getroot()
+
+        # Tags to manage
+        known_tags = {"dub", "semi-dub", "wrong-dub"}
+
+        # Remove any existing known tags
+        old_tags = root.findall("tag")
+        for t in old_tags:
+            if t.text and t.text.strip().lower() in known_tags:
+                root.remove(t)
+
+        # Add new tag as first tag
+        new_tag = ET.Element("tag")
+        new_tag.text = tag_value
+        insert_index = 0
+
+        # Insert before existing <tag> if any
+        for i, elem in enumerate(root):
+            if elem.tag == "tag":
+                insert_index = i
+                break
+        root.insert(insert_index, new_tag)
+
+        if not dry_run:
+            ET.indent(tree, space="  ")
+            tree.write(nfo_path, encoding="utf-8", xml_declaration=False)
+            logger.info(f"🏷️ Updated <tag>{tag_value}</tag> in movie NFO: {os.path.basename(nfo_path)}")
+        else:
+            logger.info(f"[Dry Run] Would update <tag>{tag_value}</tag> in movie NFO: {os.path.basename(nfo_path)}")
+    except Exception as e:
+        logger.warning(f"❌ Failed to update <tag> in movie NFO: {e}")
+
+
 # === MAIN FUNCTION ===
 def run_loop(opts):
     while True:
