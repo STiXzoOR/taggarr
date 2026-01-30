@@ -1,7 +1,7 @@
 name: Taggarr
 services:
   taggarr:
-    image: docker.io/basshous3/taggarr:latest
+    image: docker.io/stixzoor/taggarr:latest
     container_name: taggarr
     environment:
       # Sonarr (TV Shows) - set these to enable TV show scanning

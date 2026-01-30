@@ -37,7 +37,7 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 > 1. **Sonarr**  
 >    Make sure you have `METADATA` turned on with KODI/Emby Standard and all checkboxes are turned on.
 > 2. **Docker**  
->    Pull the Docker image from `docker.io/basshous3/taggarr:latest`
+>    Pull the Docker image from `docker.io/stixzoor/taggarr:latest`
 > 3. **Configs**  
 >    Make sure to use `/tv` as path to your **CONTAINER** (not host). Check out [example of yaml configs](https://github.com/BassHous3/taggarr?tab=readme-ov-file#configuration-example) below.
 > 4. **Media players**  
@@ -45,8 +45,8 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 
 <br></br>
 [![GitHub last commit](https://img.shields.io/github/release-date/BassHous3/taggarr?style=for-the-badge&logo=github)](https://github.com/BassHous3/taggarr)
-[![Latest tag](https://img.shields.io/docker/v/basshous3/taggarr?style=for-the-badge&logo=docker)](https://hub.docker.com/r/basshous3/taggarr)
-[![Docker pulls](https://img.shields.io/docker/pulls/basshous3/taggarr?style=for-the-badge&logo=docker)](https://hub.docker.com/r/basshous3/taggarr)
+[![Latest tag](https://img.shields.io/docker/v/stixzoor/taggarr?style=for-the-badge&logo=docker)](https://hub.docker.com/r/stixzoor/taggarr)
+[![Docker pulls](https://img.shields.io/docker/pulls/stixzoor/taggarr?style=for-the-badge&logo=docker)](https://hub.docker.com/r/stixzoor/taggarr)
 [![Discord](https://img.shields.io/discord/1387237436765241344?style=for-the-badge&logo=discord)](https://discord.com/invite/uggq7JQk89)
 
 <br></br>
@@ -142,7 +142,7 @@ Special thanks for inspiration goes to:
 name: Taggarr
 services:
   taggarr:
-    image: docker.io/basshous3/taggarr:latest
+    image: docker.io/stixzoor/taggarr:latest
     container_name: taggarr
     environment:
       # Sonarr (TV Shows) - set these to enable TV show scanning

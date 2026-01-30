@@ -12,7 +12,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: basshous3/taggarr
+  IMAGE_NAME: stixzoor/taggarr
 
 jobs:
   build-and-push:
