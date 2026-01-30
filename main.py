@@ -132,6 +132,54 @@ def save_taggarr(data):
     except Exception as e:
         logger.warning(f"⚠️ Failed to save taggarr.json: {e}")
 
+# === MOVIE JSON STORAGE ===
+def load_taggarr_movies():
+    if not TAGGARR_MOVIES_JSON_PATH:
+        return {"movies": {}}
+    if os.path.exists(TAGGARR_MOVIES_JSON_PATH):
+        try:
+            logger.info(f"📍 taggarr.json (movies) found at {TAGGARR_MOVIES_JSON_PATH}")
+            with open(TAGGARR_MOVIES_JSON_PATH, 'r') as f:
+                data = json.load(f)
+                logger.debug(f"✅ Loaded taggarr.json (movies) with {len(data.get('movies', {}))} entries.")
+                return data
+        except Exception as e:
+            logger.warning(f"⚠️ taggarr.json (movies) is corrupted: {e}")
+            backup_path = TAGGARR_MOVIES_JSON_PATH + ".bak"
+            os.rename(TAGGARR_MOVIES_JSON_PATH, backup_path)
+            logger.warning(f"❌ Corrupted file moved to: {backup_path}")
+
+    logger.info("❌ No taggarr.json (movies) found — starting fresh.")
+    return {"movies": {}}
+
+
+def save_taggarr_movies(data):
+    if not TAGGARR_MOVIES_JSON_PATH:
+        return
+    try:
+        data["version"] = __version__
+        ordered_data = {"version": data["version"]}
+        for k, v in data.items():
+            if k != "version":
+                ordered_data[k] = v
+        raw_json = json.dumps(ordered_data, indent=2, ensure_ascii=False)
+
+        # compact language lists
+        compact_json = re.sub(
+            r'("languages": )\[\s*\n\s*((?:\s*"[^"]+",?\s*\n?)+)(\s*\])',
+            lambda m: '{}[{}]'.format(
+                m.group(1),
+                ', '.join(f'"{x}"' for x in re.findall(r'"([^"]+)"', m.group(2)))
+            ),
+            raw_json
+        )
+
+        with open(TAGGARR_MOVIES_JSON_PATH, 'w') as f:
+            f.write(compact_json)
+        logger.debug("✅ taggarr.json (movies) saved successfully.")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to save taggarr.json (movies): {e}")
+
 # === MEDIA TOOLS ===
 def analyze_audio(video_path):
     try:
