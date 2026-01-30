@@ -256,6 +256,49 @@ def scan_movie(movie_path, movie_meta):
     }
 
 
+def determine_movie_tag(scan_result):
+    """
+    Determine the appropriate tag for a movie based on audio analysis.
+    Returns: TAG_DUB, TAG_WRONG_DUB, or None (original only)
+    """
+    if scan_result is None:
+        return None
+
+    langs = set(scan_result["languages"])
+    original_codes = scan_result["original_codes"]
+
+    # Handle fallback audio track
+    if "__fallback_original__" in langs:
+        logger.info("⚠️🔊 Audio track not labelled — assuming original language")
+        return None
+
+    # Build language aliases for detected tracks
+    langs_aliases = set()
+    for l in langs:
+        langs_aliases.update(get_language_aliases(l))
+
+    # Check for target languages
+    has_all_targets = True
+    for target in TARGET_LANGUAGES:
+        target_aliases = get_language_aliases(target)
+        if not langs_aliases.intersection(target_aliases):
+            has_all_targets = False
+            break
+
+    # Check for unexpected languages
+    unexpected = []
+    for l in langs:
+        if l not in LANGUAGE_CODES and l not in original_codes:
+            unexpected.append(l)
+
+    if unexpected:
+        return TAG_WRONG_DUB
+    elif has_all_targets:
+        return TAG_DUB
+
+    return None  # Original only
+
+
 def scan_season(season_path, show, quick=False):
     video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     files = sorted([f for f in os.listdir(season_path) if os.path.splitext(f)[1].lower() in video_exts])
