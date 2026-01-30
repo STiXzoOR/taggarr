@@ -2,17 +2,26 @@
 """Taggarr - Dub Analysis & Tagging CLI."""
 
 import argparse
+import sys
 import time
 
 import taggarr
-from taggarr.config import START_RUNNING, WRITE_MODE, RUN_INTERVAL_SECONDS
+from taggarr.config_loader import load_config, ConfigError
 
 
 def main():
     parser = argparse.ArgumentParser(description=taggarr.__description__)
     parser.add_argument(
+        '--config', '-c',
+        help="Path to config file (default: searches standard locations)"
+    )
+    parser.add_argument(
+        '--instances', '-i',
+        help="Comma-separated list of instances to process (default: all)"
+    )
+    parser.add_argument(
         '--write-mode', type=int, choices=[0, 1, 2],
-        default=WRITE_MODE,
+        default=0,
         help="0=default, 1=rewrite all, 2=remove all"
     )
     parser.add_argument(
@@ -23,16 +32,24 @@ def main():
         '--dry-run', action='store_true',
         help="No API calls or file edits"
     )
+    parser.add_argument(
+        '--loop', action='store_true',
+        help="Run continuously at configured interval"
+    )
     opts = parser.parse_args()
 
-    if START_RUNNING:
-        taggarr.run_loop(opts)
-    elif any(vars(opts).values()):
-        taggarr.run(opts)
+    # Load configuration
+    try:
+        config = load_config(opts.config)
+    except ConfigError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Run
+    if opts.loop:
+        taggarr.run_loop(opts, config)
     else:
-        # Idle mode - wait for external trigger
-        while True:
-            time.sleep(RUN_INTERVAL_SECONDS)
+        taggarr.run(opts, config)
 
 
 if __name__ == '__main__':

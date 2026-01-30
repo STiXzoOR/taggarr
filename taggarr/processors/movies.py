@@ -3,31 +3,28 @@
 import os
 import logging
 from datetime import datetime
+from typing import Dict, Optional
 
-from taggarr.config import (
-    ROOT_MOVIE_PATH, TARGET_GENRE_MOVIES, TARGET_LANGUAGES,
-    TAG_DUB, TAG_WRONG_DUB,
-    QUICK_MODE, DRY_RUN, WRITE_MODE
-)
-from taggarr.services import radarr, media
+from taggarr.config_schema import InstanceConfig
+from taggarr.services.radarr import RadarrClient
+from taggarr.services import media
 from taggarr import nfo, languages
 
 logger = logging.getLogger("taggarr")
 
-# Build language codes at module load
-LANGUAGE_CODES = languages.build_language_codes(TARGET_LANGUAGES)
 
+def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_movies: dict) -> dict:
+    """Process all movies for a Radarr instance."""
+    quick = opts.quick or instance.quick_mode
+    dry_run = opts.dry_run or instance.dry_run
+    write_mode = opts.write_mode
 
-def process_all(opts, taggarr_movies):
-    """Process all movies in the library."""
-    quick = opts.quick or QUICK_MODE
-    dry_run = opts.dry_run or DRY_RUN
-    write_mode = opts.write_mode or WRITE_MODE
+    language_codes = languages.build_language_codes(instance.target_languages)
 
     logger.info("Starting movie scan...")
 
-    for movie_folder in sorted(os.listdir(ROOT_MOVIE_PATH)):
-        movie_path = os.path.abspath(os.path.join(ROOT_MOVIE_PATH, movie_folder))
+    for movie_folder in sorted(os.listdir(instance.root_path)):
+        movie_path = os.path.abspath(os.path.join(instance.root_path, movie_folder))
         if not os.path.isdir(movie_path):
             continue
 
@@ -56,7 +53,7 @@ def process_all(opts, taggarr_movies):
             continue
 
         # Get Radarr metadata
-        movie_meta = radarr.get_movie_by_path(movie_path)
+        movie_meta = client.get_movie_by_path(movie_path)
         if not movie_meta:
             logger.warning(f"No Radarr metadata for {movie_folder}")
             continue
@@ -67,9 +64,9 @@ def process_all(opts, taggarr_movies):
             continue
 
         # Genre filter
-        if TARGET_GENRE_MOVIES:
+        if instance.target_genre:
             genres = [g.lower() for g in movie_meta.get("genres", [])]
-            if TARGET_GENRE_MOVIES.lower() not in genres:
+            if instance.target_genre.lower() not in genres:
                 logger.info(f"Skipping {movie_folder}: genre mismatch")
                 continue
 
@@ -83,35 +80,35 @@ def process_all(opts, taggarr_movies):
         # Handle remove mode
         if write_mode == 2:
             logger.info(f"Removing tags for {movie_folder}")
-            for tag in [TAG_DUB, TAG_WRONG_DUB]:
-                radarr.remove_tag(movie_id, tag, dry_run)
+            for tag in [instance.tags.dub, instance.tags.wrong]:
+                client.remove_tag(movie_id, tag, dry_run)
             if movie_path in taggarr_movies["movies"]:
                 del taggarr_movies["movies"][movie_path]
             continue
 
         # Scan movie
-        scan_result = _scan_movie(movie_path, movie_meta)
+        scan_result = _scan_movie(movie_path, movie_meta, instance, language_codes)
         if scan_result is None:
             continue
 
         # Determine tag
-        tag = _determine_tag(scan_result)
+        tag = _determine_tag(scan_result, instance, language_codes)
         logger.info(f"Tagged as {tag or 'no tag (original)'}")
 
         # Apply tags to Radarr
         if tag:
-            radarr.add_tag(movie_id, tag, dry_run)
-            if tag == TAG_WRONG_DUB:
-                radarr.remove_tag(movie_id, TAG_DUB, dry_run)
-            elif tag == TAG_DUB:
-                radarr.remove_tag(movie_id, TAG_WRONG_DUB, dry_run)
+            client.add_tag(movie_id, tag, dry_run)
+            if tag == instance.tags.wrong:
+                client.remove_tag(movie_id, instance.tags.dub, dry_run)
+            elif tag == instance.tags.dub:
+                client.remove_tag(movie_id, instance.tags.wrong, dry_run)
         else:
-            for t in [TAG_DUB, TAG_WRONG_DUB]:
-                radarr.remove_tag(movie_id, t, dry_run)
+            for t in [instance.tags.dub, instance.tags.wrong]:
+                client.remove_tag(movie_id, t, dry_run)
 
         # Update NFO if applicable
         nfo_path = _find_nfo(movie_path, movie_folder)
-        if nfo_path and tag in [TAG_DUB, TAG_WRONG_DUB]:
+        if nfo_path and tag in [instance.tags.dub, instance.tags.wrong]:
             nfo.update_movie_tag(nfo_path, tag, dry_run)
 
         # Save state
@@ -127,7 +124,8 @@ def process_all(opts, taggarr_movies):
     return taggarr_movies
 
 
-def _scan_movie(movie_path, movie_meta):
+def _scan_movie(movie_path: str, movie_meta: dict, instance: InstanceConfig,
+                language_codes: set) -> Optional[Dict]:
     """Scan a movie folder and return language analysis."""
     video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     ignore_patterns = ['-sample', 'sample.', 'extras', 'featurettes', 'behind the scenes', 'deleted scenes']
@@ -171,7 +169,8 @@ def _scan_movie(movie_path, movie_meta):
     }
 
 
-def _determine_tag(scan_result):
+def _determine_tag(scan_result: dict, instance: InstanceConfig,
+                   language_codes: set) -> Optional[str]:
     """Determine the appropriate tag for a movie."""
     if scan_result is None:
         return None
@@ -191,7 +190,7 @@ def _determine_tag(scan_result):
 
     # Check for all target languages
     has_all_targets = True
-    for target in TARGET_LANGUAGES:
+    for target in instance.target_languages:
         target_aliases = languages.get_aliases(target)
         if not langs_aliases.intersection(target_aliases):
             has_all_targets = False
@@ -200,18 +199,18 @@ def _determine_tag(scan_result):
     # Check for unexpected languages
     unexpected = []
     for lang in langs:
-        if lang not in LANGUAGE_CODES and lang not in original_codes:
+        if lang not in language_codes and lang not in original_codes:
             unexpected.append(lang)
 
     if unexpected:
-        return TAG_WRONG_DUB
+        return instance.tags.wrong
     elif has_all_targets:
-        return TAG_DUB
+        return instance.tags.dub
 
     return None
 
 
-def _find_nfo(movie_path, movie_folder):
+def _find_nfo(movie_path: str, movie_folder: str) -> Optional[str]:
     """Find the movie's NFO file."""
     for pattern in ['movie.nfo', f"{movie_folder}.nfo"]:
         potential = os.path.join(movie_path, pattern)

@@ -68,12 +68,12 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
     <td align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
   </tr>
     <tr>
-    <th colspan="1" align="center">Support for multiple volumes</th>
+    <th colspan="1" align="center">Support for multiple instances</th>
     <th colspan="1" align="center">UI</th>
     <th colspan="1" align="center">Tag in genre</th>
   </tr>
   <tr>
-    <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-In%20Progress-orange?style=flat-square" /></td>
+    <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
     <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-Not%20Ready-red?style=flat-square" /></td>
     <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
   </tr>
@@ -136,7 +136,22 @@ Special thanks for inspiration goes to:
 
 <br>
 
-## CONFIGURATION EXAMPLE
+## CONFIGURATION
+
+### YAML Config File (v0.7.0+)
+
+Taggarr now supports multiple Sonarr/Radarr instances via a YAML configuration file. See `taggarr.example.yaml` for a complete example.
+
+**Config file search order:** `./taggarr.yaml` → `~/.config/taggarr/config.yaml` → `/etc/taggarr/config.yaml`
+
+**CLI options:**
+
+- `--config PATH` - Use specific config file
+- `--instances NAME,NAME` - Process only specified instances
+- `--dry-run` - Test without making changes
+- `--loop` - Run continuously at configured interval
+
+### Docker Compose Example (Legacy Environment Variables)
 
 ```yaml
 name: Taggarr

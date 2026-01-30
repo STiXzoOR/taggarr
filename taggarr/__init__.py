@@ -2,39 +2,46 @@
 
 __description__ = "Dub Analysis & Tagging."
 __author__ = "BASSHOUS3"
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
+import os
 import time
 import logging
 
-from taggarr.config import (
-    SONARR_ENABLED, RADARR_ENABLED,
-    TAGGARR_JSON_PATH, TAGGARR_MOVIES_JSON_PATH,
-    RUN_INTERVAL_SECONDS
-)
+from taggarr.config_loader import load_config, ConfigError
+from taggarr.config_schema import Config, InstanceConfig
 from taggarr.logging_setup import setup_logging
 from taggarr.storage import json_store
 from taggarr.processors import tv, movies
+from taggarr.services.sonarr import SonarrClient
+from taggarr.services.radarr import RadarrClient
 
 _logger = None
 
 
-def run(opts):
-    """Run a single scan cycle."""
+def run(opts, config: Config):
+    """Run a single scan cycle for all configured instances."""
     global _logger
     if _logger is None:
-        _logger = setup_logging()
+        _logger = setup_logging(
+            level=config.defaults.log_level,
+            path=config.defaults.log_path
+        )
 
     _logger.info(f"Taggarr - {__description__}")
-    time.sleep(1)
     _logger.info(f"Taggarr - v{__version__} started.")
-    time.sleep(1)
     _logger.info("Starting Taggarr scan...")
-    time.sleep(5)
 
-    # Log environment
-    _logger.debug(f"SONARR_ENABLED={SONARR_ENABLED}, RADARR_ENABLED={RADARR_ENABLED}")
-    time.sleep(3)
+    # Filter instances if specified
+    instance_filter = getattr(opts, 'instances', None)
+    if instance_filter:
+        instance_names = [n.strip() for n in instance_filter.split(",")]
+        instances = {k: v for k, v in config.instances.items() if k in instance_names}
+        if not instances:
+            _logger.error(f"No matching instances found for: {instance_filter}")
+            return
+    else:
+        instances = config.instances
 
     # Log mode info
     if opts.quick:
@@ -48,31 +55,41 @@ def run(opts):
     elif opts.write_mode == 2:
         _logger.info("Remove mode: Everything will be removed.")
 
-    # Process TV shows
-    if SONARR_ENABLED:
-        _logger.info("Sonarr enabled - processing TV shows...")
-        taggarr_data = json_store.load(TAGGARR_JSON_PATH, key="series")
-        taggarr_data = tv.process_all(opts, taggarr_data)
-        json_store.save(TAGGARR_JSON_PATH, taggarr_data, key="series")
-    else:
-        _logger.info("Sonarr not configured - skipping TV shows")
+    # Process each instance
+    for name, instance in instances.items():
+        _logger.info(f"Processing instance: {name} ({instance.type} @ {instance.url})")
 
-    # Process movies
-    if RADARR_ENABLED:
-        _logger.info("Radarr enabled - processing movies...")
-        taggarr_movies = json_store.load(TAGGARR_MOVIES_JSON_PATH, key="movies")
-        taggarr_movies = movies.process_all(opts, taggarr_movies)
-        json_store.save(TAGGARR_MOVIES_JSON_PATH, taggarr_movies, key="movies")
-    else:
-        _logger.info("Radarr not configured - skipping movies")
+        try:
+            _process_instance(instance, opts)
+        except Exception as e:
+            _logger.error(f"Failed to process instance {name}: {e}")
+            continue
 
     _logger.info("Finished Taggarr scan.")
-    _logger.info("Check out Huntarr.io to hunt missing dubs!")
-    _logger.info(f"Next scan in {RUN_INTERVAL_SECONDS / 3600} hours.")
+    _logger.info(f"Next scan in {config.defaults.run_interval_seconds / 3600} hours.")
 
 
-def run_loop(opts):
+def _process_instance(instance: InstanceConfig, opts) -> None:
+    """Process a single Sonarr/Radarr instance."""
+    global _logger
+
+    json_path = os.path.join(instance.root_path, "taggarr.json")
+
+    if instance.type == "sonarr":
+        client = SonarrClient(instance.url, instance.api_key)
+        taggarr_data = json_store.load(json_path, key="series")
+        taggarr_data = tv.process_all(client, instance, opts, taggarr_data)
+        json_store.save(json_path, taggarr_data, key="series")
+
+    elif instance.type == "radarr":
+        client = RadarrClient(instance.url, instance.api_key)
+        taggarr_data = json_store.load(json_path, key="movies")
+        taggarr_data = movies.process_all(client, instance, opts, taggarr_data)
+        json_store.save(json_path, taggarr_data, key="movies")
+
+
+def run_loop(opts, config: Config):
     """Run scans continuously at configured interval."""
     while True:
-        run(opts)
-        time.sleep(RUN_INTERVAL_SECONDS)
+        run(opts, config)
+        time.sleep(config.defaults.run_interval_seconds)

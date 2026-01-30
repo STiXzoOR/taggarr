@@ -1,0 +1,53 @@
+# Taggarr Configuration
+# Copy to taggarr.yaml and customize for your setup
+
+defaults:
+  target_languages: [en]
+  tags:
+    dub: "dub"
+    semi: "semi-dub"
+    wrong: "wrong-dub"
+  dry_run: false
+  quick_mode: false
+  run_interval_seconds: 7200
+  log_level: INFO
+  log_path: /logs
+
+instances:
+  # Standard TV library
+  sonarr:
+    type: sonarr
+    url: http://localhost:8989
+    api_key: ${SONARR_API_KEY}
+    root_path: /media/tv
+
+  # 4K TV library
+  sonarr-4k:
+    type: sonarr
+    url: http://localhost:8990
+    api_key: ${SONARR_4K_API_KEY}
+    root_path: /media/tv-4k
+
+  # Anime library with Japanese + English targets
+  sonarr-anime:
+    type: sonarr
+    url: http://localhost:8991
+    api_key: ${SONARR_ANIME_API_KEY}
+    root_path: /media/anime
+    target_languages: [ja, en]
+    tags:
+      dub: "dubbed"
+
+  # Standard movie library
+  radarr:
+    type: radarr
+    url: http://localhost:7878
+    api_key: ${RADARR_API_KEY}
+    root_path: /media/movies
+
+  # 4K movie library
+  radarr-4k:
+    type: radarr
+    url: http://localhost:7879
+    api_key: ${RADARR_4K_API_KEY}
+    root_path: /media/movies-4k

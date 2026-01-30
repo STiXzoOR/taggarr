@@ -4,29 +4,26 @@ import os
 import re
 import logging
 from datetime import datetime
+from typing import Dict, Optional, Tuple
 
-from taggarr.config import (
-    ROOT_TV_PATH, TARGET_GENRE, TARGET_LANGUAGES,
-    TAG_DUB, TAG_SEMI, TAG_WRONG_DUB,
-    ADD_TAG_TO_GENRE, QUICK_MODE, DRY_RUN, WRITE_MODE
-)
-from taggarr.services import sonarr, media
+from taggarr.config_schema import InstanceConfig
+from taggarr.services.sonarr import SonarrClient
+from taggarr.services import media
 from taggarr import nfo, languages
 
 logger = logging.getLogger("taggarr")
 
-# Build language codes at module load
-LANGUAGE_CODES = languages.build_language_codes(TARGET_LANGUAGES)
 
+def process_all(client: SonarrClient, instance: InstanceConfig, opts, taggarr_data: dict) -> dict:
+    """Process all TV shows for a Sonarr instance."""
+    quick = opts.quick or instance.quick_mode
+    dry_run = opts.dry_run or instance.dry_run
+    write_mode = opts.write_mode
 
-def process_all(opts, taggarr_data):
-    """Process all TV shows in the library."""
-    quick = opts.quick or QUICK_MODE
-    dry_run = opts.dry_run or DRY_RUN
-    write_mode = opts.write_mode or WRITE_MODE
+    language_codes = languages.build_language_codes(instance.target_languages)
 
-    for show_folder in sorted(os.listdir(ROOT_TV_PATH)):
-        show_path = os.path.abspath(os.path.join(ROOT_TV_PATH, show_folder))
+    for show_folder in sorted(os.listdir(instance.root_path)):
+        show_path = os.path.abspath(os.path.join(instance.root_path, show_folder))
         if not os.path.isdir(show_path):
             continue
 
@@ -48,14 +45,14 @@ def process_all(opts, taggarr_data):
             logger.debug(f"No NFO found for: {show_folder}")
             continue
 
-        if not _passes_genre_filter(nfo_path):
+        if not _passes_genre_filter(nfo_path, instance.target_genre):
             logger.info(f"Skipping {show_folder}: genre mismatch")
             continue
 
         logger.info(f"Processing show: {show_folder}")
 
         # Get Sonarr metadata
-        series = sonarr.get_series_by_path(show_path)
+        series = client.get_series_by_path(show_path)
         if not series:
             logger.warning(f"No Sonarr metadata for {show_folder}")
             continue
@@ -65,25 +62,23 @@ def process_all(opts, taggarr_data):
         # Handle remove mode
         if write_mode == 2:
             logger.info(f"Removing tags for {show_folder}")
-            for tag in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
-                sonarr.remove_tag(series_id, tag, dry_run)
+            for tag in [instance.tags.dub, instance.tags.semi, instance.tags.wrong]:
+                client.remove_tag(series_id, tag, dry_run)
             if show_path in taggarr_data["series"]:
                 del taggarr_data["series"][show_path]
             continue
 
         # Scan and determine tag
-        tag, seasons = scan_show(show_path, series, quick)
+        tag, seasons = _scan_show(
+            show_path, series, instance, language_codes, quick
+        )
         logger.info(f"Tagged as {tag or 'no tag (original)'}")
 
         # Apply tags to Sonarr
-        _apply_tags(series_id, tag, dry_run)
-
-        # Update NFO genre if configured
-        if ADD_TAG_TO_GENRE:
-            nfo.update_genre(nfo_path, tag == TAG_DUB, dry_run)
+        _apply_tags(client, series_id, tag, instance, dry_run)
 
         # Update NFO tag
-        if tag in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
+        if tag in [instance.tags.dub, instance.tags.semi, instance.tags.wrong]:
             nfo.update_tag(nfo_path, tag, dry_run)
 
         # Get current mtime for storage
@@ -100,12 +95,13 @@ def process_all(opts, taggarr_data):
 
         # Refresh if in rewrite mode
         if write_mode == 1:
-            sonarr.refresh_series(series_id, dry_run)
+            client.refresh_series(series_id, dry_run)
 
     return taggarr_data
 
 
-def scan_show(show_path, series_meta, quick=False):
+def _scan_show(show_path: str, series_meta: dict, instance: InstanceConfig,
+               language_codes: set, quick: bool = False) -> Tuple[Optional[str], dict]:
     """Scan all seasons and determine overall tag."""
     seasons = {}
     has_wrong, has_dub = False, False
@@ -116,7 +112,7 @@ def scan_show(show_path, series_meta, quick=False):
             continue
 
         logger.info(f"Scanning season: {entry}")
-        stats = _scan_season(season_path, series_meta, quick)
+        stats = _scan_season(season_path, series_meta, instance, language_codes, quick)
         stats["last_modified"] = os.path.getmtime(season_path)
         stats["status"] = _determine_status(stats)
 
@@ -127,16 +123,17 @@ def scan_show(show_path, series_meta, quick=False):
     # Determine final tag
     statuses = [s["status"] for s in seasons.values()]
     if has_wrong:
-        return TAG_WRONG_DUB, seasons
+        return instance.tags.wrong, seasons
     elif all(s == "fully-dub" for s in statuses):
-        return TAG_DUB, seasons
+        return instance.tags.dub, seasons
     elif any(s in ("fully-dub", "semi-dub") for s in statuses):
-        return TAG_SEMI, seasons
+        return instance.tags.semi, seasons
 
     return None, seasons
 
 
-def _scan_season(season_path, series_meta, quick=False):
+def _scan_season(season_path: str, series_meta: dict, instance: InstanceConfig,
+                 language_codes: set, quick: bool = False) -> dict:
     """Scan episodes in a season folder."""
     video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     files = sorted([
@@ -177,7 +174,7 @@ def _scan_season(season_path, series_meta, quick=False):
             continue
 
         langs_set = set(langs)
-        has_target = langs_set.intersection(LANGUAGE_CODES)
+        has_target = langs_set.intersection(language_codes)
 
         # Build aliases for detected languages
         langs_aliases = set()
@@ -186,7 +183,7 @@ def _scan_season(season_path, series_meta, quick=False):
 
         # Check for missing target languages
         missing_target = set()
-        for t in TARGET_LANGUAGES:
+        for t in instance.target_languages:
             t_aliases = languages.get_aliases(t)
             if not langs_aliases.intersection(t_aliases):
                 missing_target.add(t)
@@ -203,14 +200,14 @@ def _scan_season(season_path, series_meta, quick=False):
 
         # Collect unexpected languages
         for lang in langs:
-            if lang not in LANGUAGE_CODES and lang not in original_codes:
+            if lang not in language_codes and lang not in original_codes:
                 stats["unexpected_languages"].append(lang)
 
     stats["unexpected_languages"] = sorted(set(stats["unexpected_languages"]))
     return stats
 
 
-def _has_changes(show_path, saved_seasons):
+def _has_changes(show_path: str, saved_seasons: dict) -> bool:
     """Check if any season has been modified."""
     for d in os.listdir(show_path):
         season_path = os.path.join(show_path, d)
@@ -222,7 +219,7 @@ def _has_changes(show_path, saved_seasons):
     return False
 
 
-def _has_new_seasons(show_path, saved_seasons):
+def _has_new_seasons(show_path: str, saved_seasons: dict) -> bool:
     """Check if there are new season folders."""
     existing = set(saved_seasons.keys())
     current = set(
@@ -232,34 +229,35 @@ def _has_new_seasons(show_path, saved_seasons):
     return len(current - existing) > 0
 
 
-def _passes_genre_filter(nfo_path):
+def _passes_genre_filter(nfo_path: str, target_genre: Optional[str]) -> bool:
     """Check if show passes genre filter."""
-    if not TARGET_GENRE:
+    if not target_genre:
         return True
     genres = nfo.get_genres(nfo_path)
-    return TARGET_GENRE.lower() in genres
+    return target_genre.lower() in genres
 
 
-def _apply_tags(series_id, tag, dry_run):
+def _apply_tags(client: SonarrClient, series_id: int, tag: Optional[str],
+                instance: InstanceConfig, dry_run: bool) -> None:
     """Apply appropriate tags and remove conflicting ones."""
     if tag:
-        sonarr.add_tag(series_id, tag, dry_run)
-        if tag == TAG_WRONG_DUB:
-            sonarr.remove_tag(series_id, TAG_SEMI, dry_run)
-            sonarr.remove_tag(series_id, TAG_DUB, dry_run)
-        elif tag == TAG_SEMI:
-            sonarr.remove_tag(series_id, TAG_WRONG_DUB, dry_run)
-            sonarr.remove_tag(series_id, TAG_DUB, dry_run)
-        elif tag == TAG_DUB:
-            sonarr.remove_tag(series_id, TAG_WRONG_DUB, dry_run)
-            sonarr.remove_tag(series_id, TAG_SEMI, dry_run)
+        client.add_tag(series_id, tag, dry_run)
+        if tag == instance.tags.wrong:
+            client.remove_tag(series_id, instance.tags.semi, dry_run)
+            client.remove_tag(series_id, instance.tags.dub, dry_run)
+        elif tag == instance.tags.semi:
+            client.remove_tag(series_id, instance.tags.wrong, dry_run)
+            client.remove_tag(series_id, instance.tags.dub, dry_run)
+        elif tag == instance.tags.dub:
+            client.remove_tag(series_id, instance.tags.wrong, dry_run)
+            client.remove_tag(series_id, instance.tags.semi, dry_run)
     else:
         logger.info("Removing all tags since it's original (no tag)")
-        for t in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
-            sonarr.remove_tag(series_id, t, dry_run)
+        for t in [instance.tags.dub, instance.tags.semi, instance.tags.wrong]:
+            client.remove_tag(series_id, t, dry_run)
 
 
-def _determine_status(stats):
+def _determine_status(stats: dict) -> str:
     """Determine season status from stats."""
     if stats["unexpected_languages"]:
         return "wrong-dub"
@@ -270,7 +268,8 @@ def _determine_status(stats):
     return "original"
 
 
-def _build_entry(show_folder, tag, seasons, series, mtime):
+def _build_entry(show_folder: str, tag: Optional[str], seasons: dict,
+                 series: dict, mtime: float) -> dict:
     """Build taggarr.json entry for a show."""
     original_lang = series.get("originalLanguage", "")
     if isinstance(original_lang, dict):

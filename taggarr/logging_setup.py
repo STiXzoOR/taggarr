@@ -5,19 +5,23 @@ import logging
 from datetime import datetime
 
 from taggarr import __version__
-from taggarr.config import LOG_LEVEL, LOG_PATH
 
 
-def setup_logging():
-    """Configure and return the taggarr logger."""
-    os.makedirs(LOG_PATH, exist_ok=True)
+def setup_logging(level: str = "INFO", path: str = "/logs"):
+    """Configure and return the taggarr logger.
+
+    Args:
+        level: Log level string (DEBUG, INFO, WARNING, ERROR)
+        path: Directory path for log files
+    """
+    os.makedirs(path, exist_ok=True)
     log_file = os.path.join(
-        LOG_PATH,
+        path,
         f"taggarr({__version__})_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     )
 
     logger = logging.getLogger("taggarr")
-    logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
+    logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 

@@ -1,19 +1,10 @@
 # AGENTS.md
 
-Python tool that scans media libraries and tags TV shows based on audio dubs (Sonarr integration + Kodi/Emby NFO files).
+Python tool that scans media libraries and tags TV shows/movies based on audio dubs. Supports multiple Sonarr/Radarr instances via YAML configuration.
 
 **System dependency:** `mediainfo` (brew install mediainfo / apt-get install mediainfo)
 
-**Run:** `python main.py` with required env vars: `SONARR_API_KEY`, `SONARR_URL`, `ROOT_TV_PATH`
-
-**Package structure:** Code organized in `taggarr/` package:
-
-- `config.py` - Environment variables
-- `services/` - Sonarr, Radarr, media analysis
-- `storage/` - JSON persistence
-- `processors/` - TV and movie scanning logic
-- `nfo.py` - NFO file handling
-- `languages.py` - Language code utilities
+**Run:** `python main.py` (requires `taggarr.yaml` config file)
 
 ## Tagging Logic
 
@@ -26,3 +17,4 @@ Python tool that scans media libraries and tags TV shows based on audio dubs (So
 
 - [Architecture & Data Flow](.claude/docs/architecture.md)
 - [Configuration Reference](.claude/docs/configuration.md)
+- [Example Config](taggarr.example.yaml)
