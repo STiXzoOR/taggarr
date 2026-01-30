@@ -818,162 +818,177 @@ def main(opts=None):
     if write_mode == 2:
         logger.info("Remove mode is enabled: Everything will be removed.")
 
-    current_mtime = 0
-    taggarr = load_taggarr()
-    logger.debug(f"Available paths in JSON: {list(taggarr['series'].keys())[:5]}")
+    # Process TV shows (Sonarr)
+    if SONARR_ENABLED:
+        logger.info("📺 Sonarr enabled - processing TV shows...")
+        current_mtime = 0
+        taggarr = load_taggarr()
+        logger.debug(f"Available paths in JSON: {list(taggarr['series'].keys())[:5]}")
 
-    for show in sorted(os.listdir(ROOT_TV_PATH)):
-        show_path = os.path.join(ROOT_TV_PATH, show)
-        show_path = os.path.abspath(show_path)
-        if not os.path.isdir(show_path):
-            continue
-        normalized_path = show_path
-        show_meta = taggarr["series"].get(os.path.abspath(show_path), {})
-        saved_seasons = taggarr["series"].get(normalized_path, {}).get("seasons", {})
-        changed = False
-
-        for d in os.listdir(show_path):
-            season_path = os.path.join(show_path, d)
-            if os.path.isdir(season_path) and d.lower().startswith("season"):
-                current_mtime = os.path.getmtime(season_path)
-                saved_mtime = saved_seasons.get(d, {}).get("last_modified", 0)
-                if current_mtime > saved_mtime:
-                    changed = True
-                    break
-
-        # NEW: detect new show
-        is_new_show = normalized_path not in taggarr["series"]
-
-        # NEW: detect new season folder
-        existing_seasons = set(saved_seasons.keys())
-        current_seasons = set(d for d in os.listdir(show_path) if os.path.isdir(os.path.join(show_path, d)) and d.lower().startswith("season"))
-        new_season_detected = len(current_seasons - existing_seasons) > 0
-
-        if write_mode == 0 and not (changed or is_new_show or new_season_detected):
-            logger.info(f"🚫 Skipping {show} - no new or updated seasons")
-            continue
-
-
-        nfo_path = os.path.join(show_path, "tvshow.nfo")
-        if not os.path.exists(nfo_path):
-            logger.debug(f"No NFO found for: {show}")
-            continue
-
-        try:
-            root = safe_parse_nfo(nfo_path)
-            genres = [g.text.lower() for g in root.findall("genre")]
-            if TARGET_GENRE and TARGET_GENRE.lower() not in genres:
-                logger.info(f"🚫⛔ Skipping {show}: genre mismatch")
+        for show in sorted(os.listdir(ROOT_TV_PATH)):
+            show_path = os.path.join(ROOT_TV_PATH, show)
+            show_path = os.path.abspath(show_path)
+            if not os.path.isdir(show_path):
                 continue
-        except Exception as e:
-            logger.warning(f"Genre parsing failed for {show}: {e}")
-            continue
+            normalized_path = show_path
+            show_meta = taggarr["series"].get(os.path.abspath(show_path), {})
+            saved_seasons = taggarr["series"].get(normalized_path, {}).get("seasons", {})
+            changed = False
 
-        logger.info(f"📺 Processing show: {show}")
+            for d in os.listdir(show_path):
+                season_path = os.path.join(show_path, d)
+                if os.path.isdir(season_path) and d.lower().startswith("season"):
+                    current_mtime = os.path.getmtime(season_path)
+                    saved_mtime = saved_seasons.get(d, {}).get("last_modified", 0)
+                    if current_mtime > saved_mtime:
+                        changed = True
+                        break
 
-        sid = get_sonarr_id(show_path)
-        if not sid:
-            logger.warning(f"No Sonarr ID for {show}")
-            continue
+            # NEW: detect new show
+            is_new_show = normalized_path not in taggarr["series"]
 
-        if write_mode == 2:
-            logger.info(f"Removing tags for {show}")
-            for tag in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
-                tag_sonarr(sid, tag, remove=True, dry_run=dry_run)
-            if show_path in taggarr["series"]:
-                del taggarr["series"][show_path]
-            continue
+            # NEW: detect new season folder
+            existing_seasons = set(saved_seasons.keys())
+            current_seasons = set(d for d in os.listdir(show_path) if os.path.isdir(os.path.join(show_path, d)) and d.lower().startswith("season"))
+            new_season_detected = len(current_seasons - existing_seasons) > 0
 
-        series_data = get_sonarr_series(show_path)
-        if not series_data:
-            logger.warning(f"No Sonarr metadata found for {show}")
-            continue
+            if write_mode == 0 and not (changed or is_new_show or new_season_detected):
+                logger.info(f"🚫 Skipping {show} - no new or updated seasons")
+                continue
 
-        tag, seasons = determine_tag_and_stats(show_path, series_data, quick=quick_mode)
 
-        original_lang_raw = series_data.get("originalLanguage", "")
-        if isinstance(original_lang_raw, dict):
-            original_lang = original_lang_raw.get("name", "").lower()
-        else:
-            original_lang = str(original_lang_raw).lower()
+            nfo_path = os.path.join(show_path, "tvshow.nfo")
+            if not os.path.exists(nfo_path):
+                logger.debug(f"No NFO found for: {show}")
+                continue
 
-        logger.info(f"🏷️✅ Tagged as {tag if tag else 'no tag (original)'}")
-
-        if tag: #tag handling
-            tag_sonarr(sid, tag, dry_run=dry_run)
-            if tag == TAG_WRONG_DUB:
-                tag_sonarr(sid, TAG_SEMI, remove=True, dry_run=dry_run)
-                tag_sonarr(sid, TAG_DUB, remove=True, dry_run=dry_run)
-            elif tag == TAG_SEMI:
-                tag_sonarr(sid, TAG_WRONG_DUB, remove=True, dry_run=dry_run)
-                tag_sonarr(sid, TAG_DUB, remove=True, dry_run=dry_run)
-            elif tag == TAG_DUB:
-                tag_sonarr(sid, TAG_WRONG_DUB, remove=True, dry_run=dry_run)
-                tag_sonarr(sid, TAG_SEMI, remove=True, dry_run=dry_run)
-            else:
-                logger.info(f"Removing all tags from {show} since it's original (no tag)")
-                for t in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
-                    tag_sonarr(sid, t, remove=True, dry_run=dry_run)
-
-        # Add <genre>Dub</genre> to .nfo if ADD_TAG_TO_GENRE is true and it's fully dubbed
-        if ADD_TAG_TO_GENRE:
             try:
-                tree = ET.parse(nfo_path)
-                root = tree.getroot()
-                genres = [g.text.strip().lower() for g in root.findall("genre") if g.text]
-
-                # 💡 Early exit if no changes needed
-                if (tag == TAG_DUB and "dub" in genres) or (tag != TAG_DUB and "dub" not in genres):
-                    logger.debug(f"ℹ️ No NFO genre update needed for {show}")
-                else:
-                    modified = False
-
-                    if tag == TAG_DUB and "dub" not in genres:
-                        new_genre = ET.Element("genre")
-                        new_genre.text = "Dub"
-                        first_genre = root.find("genre")
-                        if first_genre is not None:
-                            root.insert(list(root).index(first_genre), new_genre)
-                        else:
-                            root.append(new_genre)
-                        modified = True
-                        logger.info(f"📄 Will add <genre>Dub</genre> to NFO for {show}")
-
-                    elif tag != TAG_DUB and "dub" in genres:
-                        for g in root.findall("genre"):
-                            if g.text and g.text.strip().lower() == "dub":
-                                root.remove(g)
-                                modified = True
-                        logger.info(f"📄 Will remove <genre>Dub</genre> from NFO for {show}")
-
-                    if modified and not dry_run:
-                        ET.indent(tree, space="  ")
-                        tree.write(nfo_path, encoding="utf-8", xml_declaration=False)
-                    elif modified and dry_run:
-                        logger.info(f"[Dry Run] Would update NFO file for {show}")
-
+                root = safe_parse_nfo(nfo_path)
+                genres = [g.text.lower() for g in root.findall("genre")]
+                if TARGET_GENRE and TARGET_GENRE.lower() not in genres:
+                    logger.info(f"🚫⛔ Skipping {show}: genre mismatch")
+                    continue
             except Exception as e:
-                logger.warning(f"❌ Failed to update NFO genre for {show}: {e}")
-        # Unsures <tag>dub</tag> to .nfo
-        if tag in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
-            update_nfo_tag(nfo_path, tag, dry_run=dry_run)
+                logger.warning(f"Genre parsing failed for {show}: {e}")
+                continue
+
+            logger.info(f"📺 Processing show: {show}")
+
+            sid = get_sonarr_id(show_path)
+            if not sid:
+                logger.warning(f"No Sonarr ID for {show}")
+                continue
+
+            if write_mode == 2:
+                logger.info(f"Removing tags for {show}")
+                for tag in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
+                    tag_sonarr(sid, tag, remove=True, dry_run=dry_run)
+                if show_path in taggarr["series"]:
+                    del taggarr["series"][show_path]
+                continue
+
+            series_data = get_sonarr_series(show_path)
+            if not series_data:
+                logger.warning(f"No Sonarr metadata found for {show}")
+                continue
+
+            tag, seasons = determine_tag_and_stats(show_path, series_data, quick=quick_mode)
+
+            original_lang_raw = series_data.get("originalLanguage", "")
+            if isinstance(original_lang_raw, dict):
+                original_lang = original_lang_raw.get("name", "").lower()
+            else:
+                original_lang = str(original_lang_raw).lower()
+
+            logger.info(f"🏷️✅ Tagged as {tag if tag else 'no tag (original)'}")
+
+            if tag: #tag handling
+                tag_sonarr(sid, tag, dry_run=dry_run)
+                if tag == TAG_WRONG_DUB:
+                    tag_sonarr(sid, TAG_SEMI, remove=True, dry_run=dry_run)
+                    tag_sonarr(sid, TAG_DUB, remove=True, dry_run=dry_run)
+                elif tag == TAG_SEMI:
+                    tag_sonarr(sid, TAG_WRONG_DUB, remove=True, dry_run=dry_run)
+                    tag_sonarr(sid, TAG_DUB, remove=True, dry_run=dry_run)
+                elif tag == TAG_DUB:
+                    tag_sonarr(sid, TAG_WRONG_DUB, remove=True, dry_run=dry_run)
+                    tag_sonarr(sid, TAG_SEMI, remove=True, dry_run=dry_run)
+                else:
+                    logger.info(f"Removing all tags from {show} since it's original (no tag)")
+                    for t in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
+                        tag_sonarr(sid, t, remove=True, dry_run=dry_run)
+
+            # Add <genre>Dub</genre> to .nfo if ADD_TAG_TO_GENRE is true and it's fully dubbed
+            if ADD_TAG_TO_GENRE:
+                try:
+                    tree = ET.parse(nfo_path)
+                    root = tree.getroot()
+                    genres = [g.text.strip().lower() for g in root.findall("genre") if g.text]
+
+                    # Early exit if no changes needed
+                    if (tag == TAG_DUB and "dub" in genres) or (tag != TAG_DUB and "dub" not in genres):
+                        logger.debug(f"No NFO genre update needed for {show}")
+                    else:
+                        modified = False
+
+                        if tag == TAG_DUB and "dub" not in genres:
+                            new_genre = ET.Element("genre")
+                            new_genre.text = "Dub"
+                            first_genre = root.find("genre")
+                            if first_genre is not None:
+                                root.insert(list(root).index(first_genre), new_genre)
+                            else:
+                                root.append(new_genre)
+                            modified = True
+                            logger.info(f"📄 Will add <genre>Dub</genre> to NFO for {show}")
+
+                        elif tag != TAG_DUB and "dub" in genres:
+                            for g in root.findall("genre"):
+                                if g.text and g.text.strip().lower() == "dub":
+                                    root.remove(g)
+                                    modified = True
+                            logger.info(f"📄 Will remove <genre>Dub</genre> from NFO for {show}")
+
+                        if modified and not dry_run:
+                            ET.indent(tree, space="  ")
+                            tree.write(nfo_path, encoding="utf-8", xml_declaration=False)
+                        elif modified and dry_run:
+                            logger.info(f"[Dry Run] Would update NFO file for {show}")
+
+                except Exception as e:
+                    logger.warning(f"❌ Failed to update NFO genre for {show}: {e}")
+            # Unsures <tag>dub</tag> to .nfo
+            if tag in [TAG_DUB, TAG_SEMI, TAG_WRONG_DUB]:
+                update_nfo_tag(nfo_path, tag, dry_run=dry_run)
 
 
-        taggarr["series"][normalized_path] = {
-            "display_name": show,
-            "tag": tag or "none",
-            "last_scan": datetime.utcnow().isoformat() + "Z",
-            "original_language": original_lang,
-            "seasons": seasons,
-            "last_modified": current_mtime
-        }
-        logger.debug(f"Normalized show_path: {show_path}")
-        logger.debug(f"Saved series info under normalized path: {normalized_path}")
-        if write_mode == 1:
-            refresh_sonarr_series(sid, dry_run=dry_run)
-            time.sleep(0.5)
+            taggarr["series"][normalized_path] = {
+                "display_name": show,
+                "tag": tag or "none",
+                "last_scan": datetime.utcnow().isoformat() + "Z",
+                "original_language": original_lang,
+                "seasons": seasons,
+                "last_modified": current_mtime
+            }
+            logger.debug(f"Normalized show_path: {show_path}")
+            logger.debug(f"Saved series info under normalized path: {normalized_path}")
+            if write_mode == 1:
+                refresh_sonarr_series(sid, dry_run=dry_run)
+                time.sleep(0.5)
 
-    save_taggarr(taggarr)
+        save_taggarr(taggarr)
+    else:
+        logger.info("📺 Sonarr not configured - skipping TV shows")
+
+    # Process movies (Radarr)
+    if RADARR_ENABLED:
+        logger.info("🎬 Radarr enabled - processing movies...")
+        taggarr_movies = load_taggarr_movies()
+        taggarr_movies = process_movies(opts, taggarr_movies)
+        save_taggarr_movies(taggarr_movies)
+    else:
+        logger.info("🎬 Radarr not configured - skipping movies")
+
     logger.info("✅ Finished Taggarr scan.")
     logger.info(f"ℹ️ You don't have all the dubs? Checkout Huntarr.io to hunt them for you!")
     logger.info(f"Next scan is in {RUN_INTERVAL_SECONDS/60/60} hours.")
