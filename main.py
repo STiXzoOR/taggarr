@@ -663,6 +663,123 @@ def update_movie_nfo(nfo_path, tag_value, dry_run=False):
         logger.warning(f"❌ Failed to update <tag> in movie NFO: {e}")
 
 
+def process_movies(opts, taggarr_movies):
+    """Process all movies in the Radarr library."""
+    quick_mode = opts.quick or QUICK_MODE
+    dry_run = opts.dry_run or DRY_RUN
+    write_mode = opts.write_mode or WRITE_MODE
+
+    logger.info("🎬 Starting movie scan...")
+
+    for movie_folder in sorted(os.listdir(ROOT_MOVIE_PATH)):
+        movie_path = os.path.join(ROOT_MOVIE_PATH, movie_folder)
+        movie_path = os.path.abspath(movie_path)
+        if not os.path.isdir(movie_path):
+            continue
+
+        # Skip non-movie folders (like taggarr.json)
+        if movie_folder.startswith('.') or movie_folder.endswith('.json'):
+            continue
+
+        saved_movie = taggarr_movies["movies"].get(movie_path, {})
+        saved_mtime = saved_movie.get("last_modified", 0)
+
+        # Check if movie folder has changed
+        try:
+            current_mtime = max(
+                os.path.getmtime(os.path.join(root, f))
+                for root, dirs, files in os.walk(movie_path)
+                for f in files if f.endswith(('.mkv', '.mp4', '.m4v', '.avi'))
+            )
+        except ValueError:
+            current_mtime = 0
+
+        is_new_movie = movie_path not in taggarr_movies["movies"]
+        changed = current_mtime > saved_mtime
+
+        if write_mode == 0 and not (changed or is_new_movie):
+            logger.info(f"🚫 Skipping {movie_folder} - no changes")
+            continue
+
+        # Get movie metadata from Radarr
+        movie_meta = get_radarr_movie_by_path(movie_path)
+        if not movie_meta:
+            logger.warning(f"No Radarr metadata for {movie_folder}")
+            continue
+
+        # Skip movies not yet downloaded
+        if not movie_meta.get("hasFile", False):
+            logger.debug(f"Skipping {movie_folder} - not yet downloaded")
+            continue
+
+        # Genre filtering
+        if TARGET_GENRE_MOVIES:
+            genres = [g.lower() for g in movie_meta.get("genres", [])]
+            if TARGET_GENRE_MOVIES.lower() not in genres:
+                logger.info(f"🚫⛔ Skipping {movie_folder}: genre mismatch")
+                continue
+
+        logger.info(f"🎬 Processing movie: {movie_folder}")
+
+        movie_id = movie_meta.get("id")
+        if not movie_id:
+            logger.warning(f"No Radarr ID for {movie_folder}")
+            continue
+
+        if write_mode == 2:
+            logger.info(f"Removing tags for {movie_folder}")
+            for tag in [TAG_DUB, TAG_WRONG_DUB]:
+                tag_radarr(movie_id, tag, remove=True, dry_run=dry_run)
+            if movie_path in taggarr_movies["movies"]:
+                del taggarr_movies["movies"][movie_path]
+            continue
+
+        # Scan movie
+        scan_result = scan_movie(movie_path, movie_meta)
+        if scan_result is None:
+            continue
+
+        # Determine tag
+        tag = determine_movie_tag(scan_result)
+        logger.info(f"🏷️✅ Tagged as {tag if tag else 'no tag (original)'}")
+
+        # Apply tags to Radarr
+        if tag:
+            tag_radarr(movie_id, tag, dry_run=dry_run)
+            if tag == TAG_WRONG_DUB:
+                tag_radarr(movie_id, TAG_DUB, remove=True, dry_run=dry_run)
+            elif tag == TAG_DUB:
+                tag_radarr(movie_id, TAG_WRONG_DUB, remove=True, dry_run=dry_run)
+        else:
+            # Remove all tags if original only
+            for t in [TAG_DUB, TAG_WRONG_DUB]:
+                tag_radarr(movie_id, t, remove=True, dry_run=dry_run)
+
+        # Update NFO if enabled
+        nfo_patterns = ['movie.nfo', f"{movie_folder}.nfo"]
+        nfo_path = None
+        for pattern in nfo_patterns:
+            potential_nfo = os.path.join(movie_path, pattern)
+            if os.path.exists(potential_nfo):
+                nfo_path = potential_nfo
+                break
+
+        if nfo_path and tag in [TAG_DUB, TAG_WRONG_DUB]:
+            update_movie_nfo(nfo_path, tag, dry_run=dry_run)
+
+        # Save state
+        taggarr_movies["movies"][movie_path] = {
+            "display_name": movie_folder,
+            "tag": tag or "none",
+            "last_scan": datetime.utcnow().isoformat() + "Z",
+            "original_language": scan_result["original_language"],
+            "languages": scan_result["languages"],
+            "last_modified": current_mtime
+        }
+
+    return taggarr_movies
+
+
 # === MAIN FUNCTION ===
 def run_loop(opts):
     while True:
