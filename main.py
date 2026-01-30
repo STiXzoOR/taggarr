@@ -207,6 +207,55 @@ def analyze_audio(video_path):
         return []
 
 
+def scan_movie(movie_path, movie_meta):
+    """
+    Scan a movie folder and return language analysis.
+    Finds the largest video file (main feature) and analyzes its audio tracks.
+    """
+    video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
+    ignore_patterns = ['-sample', 'sample.', 'extras', 'featurettes', 'behind the scenes', 'deleted scenes']
+
+    # Find all video files in movie folder
+    video_files = []
+    for root, dirs, files in os.walk(movie_path):
+        # Skip ignored directories
+        dirs[:] = [d for d in dirs if not any(p in d.lower() for p in ignore_patterns)]
+        for f in files:
+            if os.path.splitext(f)[1].lower() in video_exts:
+                # Skip sample files
+                if any(p in f.lower() for p in ignore_patterns):
+                    continue
+                full_path = os.path.join(root, f)
+                video_files.append((full_path, os.path.getsize(full_path)))
+
+    if not video_files:
+        logger.warning(f"No video files found in {movie_path}")
+        return None
+
+    # Get the largest file (main feature)
+    main_file = max(video_files, key=lambda x: x[1])[0]
+    logger.debug(f"Scanning main movie file: {os.path.basename(main_file)}")
+
+    langs = analyze_audio(main_file)
+
+    # Get original language from Radarr metadata
+    original_lang = movie_meta.get("originalLanguage", {})
+    if isinstance(original_lang, dict):
+        original_lang_name = original_lang.get("name", "").lower()
+    else:
+        original_lang_name = str(original_lang).lower()
+
+    ORIGINAL_LANGUAGE_CODES = get_language_aliases(original_lang_name)
+
+    return {
+        "file": os.path.basename(main_file),
+        "languages": langs,
+        "original_language": original_lang_name,
+        "original_codes": ORIGINAL_LANGUAGE_CODES,
+        "last_modified": os.path.getmtime(main_file)
+    }
+
+
 def scan_season(season_path, show, quick=False):
     video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     files = sorted([f for f in os.listdir(season_path) if os.path.splitext(f)[1].lower() in video_exts])
