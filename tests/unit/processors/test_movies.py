@@ -348,6 +348,55 @@ class TestProcessAll:
         assert "genre mismatch" in caplog.text
 
     @patch("taggarr.processors.movies._scan_movie")
+    @patch("taggarr.processors.movies._determine_tag")
+    def test_processes_with_genre_match(self, mock_tag, mock_scan, tmp_path, instance):
+        """Test processing proceeds when genre filter matches."""
+        instance.root_path = str(tmp_path)
+        instance.target_genre = "anime"
+        movie_path = tmp_path / "Movie (2020)"
+        movie_path.mkdir()
+        (movie_path / "movie.mkv").write_bytes(b"x" * 100)
+
+        mock_scan.return_value = {
+            "file": "movie.mkv",
+            "languages": ["en", "ja"],
+            "original_language": "japanese",
+            "original_codes": {"ja"},
+        }
+        mock_tag.return_value = "dub"
+
+        client = Mock()
+        client.get_movie_by_path.return_value = {
+            "id": 1, "hasFile": True, "genres": ["Anime", "Action"]
+        }
+        opts = SimpleNamespace(quick=False, dry_run=False, write_mode=0)
+        taggarr_data = {"movies": {}}
+
+        movies.process_all(client, instance, opts, taggarr_data)
+
+        mock_scan.assert_called_once()
+
+    @patch("taggarr.processors.movies._scan_movie")
+    @patch("taggarr.processors.movies._determine_tag")
+    def test_remove_mode_handles_missing_movie_in_data(self, mock_tag, mock_scan, tmp_path, instance):
+        """Test remove mode when movie is not already in taggarr_data."""
+        instance.root_path = str(tmp_path)
+        movie_path = tmp_path / "Movie (2020)"
+        movie_path.mkdir()
+        (movie_path / "movie.mkv").write_bytes(b"x" * 100)
+
+        client = Mock()
+        client.get_movie_by_path.return_value = {"id": 42, "hasFile": True}
+        opts = SimpleNamespace(quick=False, dry_run=False, write_mode=2)
+        taggarr_data = {"movies": {}}  # Movie not in data
+
+        result = movies.process_all(client, instance, opts, taggarr_data)
+
+        assert client.remove_tag.call_count == 2
+        # Should not fail even though movie wasn't in data
+        assert str(movie_path) not in result["movies"]
+
+    @patch("taggarr.processors.movies._scan_movie")
     def test_skips_movie_without_id(self, mock_scan, tmp_path, instance, caplog):
         caplog.set_level(logging.WARNING)
         instance.root_path = str(tmp_path)
@@ -482,3 +531,102 @@ class TestProcessAll:
 
         client.add_tag.assert_not_called()
         assert str(movie_path) not in result["movies"]
+
+    @patch("taggarr.processors.movies._scan_movie")
+    @patch("taggarr.processors.movies._determine_tag")
+    def test_skips_json_files(self, mock_tag, mock_scan, tmp_path, instance):
+        """Test skips folders ending with .json suffix."""
+        instance.root_path = str(tmp_path)
+        (tmp_path / "taggarr.json").mkdir()  # Dir ending in .json
+
+        client = Mock()
+        opts = SimpleNamespace(quick=False, dry_run=False, write_mode=0)
+        taggarr_data = {"movies": {}}
+
+        movies.process_all(client, instance, opts, taggarr_data)
+
+        mock_scan.assert_not_called()
+
+    @patch("taggarr.processors.movies._scan_movie")
+    @patch("taggarr.processors.movies._determine_tag")
+    def test_handles_folder_with_no_video_files(self, mock_tag, mock_scan, tmp_path, instance):
+        """Test mtime defaults to 0 when no video files exist (ValueError in max)."""
+        instance.root_path = str(tmp_path)
+        movie_path = tmp_path / "Empty Movie (2020)"
+        movie_path.mkdir()
+        # Only text files, no videos - causes ValueError in max()
+
+        mock_scan.return_value = {
+            "file": "movie.mkv",
+            "languages": ["en"],
+            "original_language": "japanese",
+            "original_codes": {"ja"},
+        }
+        mock_tag.return_value = "dub"
+
+        client = Mock()
+        client.get_movie_by_path.return_value = {"id": 42, "hasFile": True}
+        opts = SimpleNamespace(quick=False, dry_run=False, write_mode=0)
+        taggarr_data = {"movies": {}}
+
+        result = movies.process_all(client, instance, opts, taggarr_data)
+
+        # Should process with mtime=0
+        assert str(movie_path) in result["movies"]
+        assert result["movies"][str(movie_path)]["last_modified"] == 0
+
+    @patch("taggarr.processors.movies._scan_movie")
+    @patch("taggarr.processors.movies._determine_tag")
+    @patch("taggarr.processors.movies.nfo.update_movie_tag")
+    def test_updates_nfo_when_tag_is_dub(self, mock_nfo, mock_tag, mock_scan, tmp_path, instance):
+        """Test NFO is updated when tag is dub."""
+        instance.root_path = str(tmp_path)
+        movie_path = tmp_path / "Movie (2020)"
+        movie_path.mkdir()
+        (movie_path / "movie.mkv").write_bytes(b"x" * 100)
+        (movie_path / "movie.nfo").write_text("<movie/>")
+
+        mock_scan.return_value = {
+            "file": "movie.mkv",
+            "languages": ["en"],
+            "original_language": "japanese",
+            "original_codes": {"ja"},
+        }
+        mock_tag.return_value = "dub"
+
+        client = Mock()
+        client.get_movie_by_path.return_value = {"id": 42, "hasFile": True}
+        opts = SimpleNamespace(quick=False, dry_run=False, write_mode=0)
+        taggarr_data = {"movies": {}}
+
+        movies.process_all(client, instance, opts, taggarr_data)
+
+        mock_nfo.assert_called_once()
+
+    @patch("taggarr.processors.movies._scan_movie")
+    @patch("taggarr.processors.movies._determine_tag")
+    @patch("taggarr.processors.movies.nfo.update_movie_tag")
+    def test_updates_nfo_when_tag_is_wrong(self, mock_nfo, mock_tag, mock_scan, tmp_path, instance):
+        """Test NFO is updated when tag is wrong-dub."""
+        instance.root_path = str(tmp_path)
+        movie_path = tmp_path / "Movie (2020)"
+        movie_path.mkdir()
+        (movie_path / "movie.mkv").write_bytes(b"x" * 100)
+        (movie_path / "movie.nfo").write_text("<movie/>")
+
+        mock_scan.return_value = {
+            "file": "movie.mkv",
+            "languages": ["en", "de"],
+            "original_language": "japanese",
+            "original_codes": {"ja"},
+        }
+        mock_tag.return_value = "wrong-dub"
+
+        client = Mock()
+        client.get_movie_by_path.return_value = {"id": 42, "hasFile": True}
+        opts = SimpleNamespace(quick=False, dry_run=False, write_mode=0)
+        taggarr_data = {"movies": {}}
+
+        movies.process_all(client, instance, opts, taggarr_data)
+
+        mock_nfo.assert_called_once()

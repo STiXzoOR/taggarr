@@ -133,6 +133,24 @@ class TestRun:
 
     @patch("taggarr._process_instance")
     @patch("taggarr.setup_logging")
+    def test_handles_unknown_write_mode(self, mock_logging, mock_process, opts, config, tmp_path):
+        """Test that unknown write_mode values are silently handled."""
+        mock_logger = MagicMock()
+        mock_logging.return_value = mock_logger
+        opts.write_mode = 99  # Unknown value
+        (tmp_path / "tv").mkdir()
+
+        run(opts, config)
+
+        # Should not log any write mode message
+        write_mode_calls = [
+            call for call in mock_logger.info.call_args_list
+            if "mode" in str(call).lower() and ("processing" in str(call).lower() or "rewrite" in str(call).lower() or "remove" in str(call).lower())
+        ]
+        assert len(write_mode_calls) == 0
+
+    @patch("taggarr._process_instance")
+    @patch("taggarr.setup_logging")
     def test_handles_instance_error(self, mock_logging, mock_process, opts, config, tmp_path):
         mock_logger = MagicMock()
         mock_logging.return_value = mock_logger
@@ -253,3 +271,38 @@ class TestRunLoop:
             run_loop(opts, config)
 
         mock_sleep.assert_called_with(3600)
+
+
+class TestProcessInstanceEdgeCases:
+    """Edge case tests for _process_instance function."""
+
+    def test_unknown_instance_type_does_nothing(self, opts, tmp_path):
+        """Test that unknown instance type simply returns without error."""
+        instance = InstanceConfig(
+            name="unknown",
+            type="unknown",
+            url="http://unknown:8000",
+            api_key="key",
+            root_path=str(tmp_path),
+            target_languages=["en"],
+            tags=TagsConfig(),
+        )
+
+        # Should not raise - just returns without doing anything
+        _process_instance(instance, opts)
+
+    @patch("taggarr._process_instance")
+    @patch("taggarr.setup_logging")
+    def test_uses_existing_logger(self, mock_logging, mock_process, opts, config, tmp_path):
+        """Test that existing logger is reused."""
+        import taggarr
+        mock_logger = MagicMock()
+        taggarr._logger = mock_logger  # Pre-set logger
+        (tmp_path / "tv").mkdir()
+
+        run(opts, config)
+
+        # setup_logging should NOT be called since _logger is already set
+        mock_logging.assert_not_called()
+        # But the logger should be used
+        mock_logger.info.assert_called()

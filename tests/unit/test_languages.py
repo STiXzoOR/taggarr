@@ -44,6 +44,12 @@ class TestGetAliases:
         result = languages.get_aliases("notareallanguage123")
         assert result == set()
 
+    def test_handles_language_without_alpha2(self):
+        """Test handling of languages that don't have alpha_2 codes (e.g., Ancient Greek)."""
+        result = languages.get_aliases("grc")  # Ancient Greek has alpha_3 but no alpha_2
+        assert "grc" in result
+        assert "ancient greek (to 1453)" in result
+
 
 class TestGetPrimaryCode:
     """Tests for get_primary_code function."""

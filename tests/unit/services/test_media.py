@@ -123,7 +123,7 @@ class TestAnalyzeAudio:
 
     @patch("taggarr.services.media.MediaInfo.parse")
     def test_logs_debug_for_fallback_detection(self, mock_parse, caplog):
-        caplog.set_level(logging.DEBUG)
+        caplog.set_level(logging.DEBUG, logger="taggarr")
         mock_parse.return_value = MockMediaInfo([
             MockTrack("Audio", language="", title=""),
         ])

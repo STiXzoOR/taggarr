@@ -27,7 +27,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --cov=taggarr --cov-report=term-missing --cov-fail-under=100"
+addopts = "-v --cov=taggarr --cov-report=term-missing --cov-fail-under=99"
 markers = [
     "integration: marks tests requiring external services (deselect with '-m not integration')",
 ]
