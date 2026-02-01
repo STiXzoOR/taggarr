@@ -1,0 +1,6 @@
+instances:
+  radarr:
+    type: radarr
+    url: http://localhost:7878
+    api_key: minimal-key
+    root_path: /media/movies

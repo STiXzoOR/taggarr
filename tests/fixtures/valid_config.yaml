@@ -1,0 +1,12 @@
+defaults:
+  target_languages: [en, ja]
+  dry_run: false
+  quick_mode: false
+  log_level: INFO
+
+instances:
+  sonarr:
+    type: sonarr
+    url: http://localhost:8989
+    api_key: test-key
+    root_path: /media/tv
