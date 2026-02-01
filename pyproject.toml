@@ -1,0 +1,36 @@
+[project]
+name = "taggarr"
+version = "0.7.0"
+description = "Dub Analysis & Tagging for Sonarr/Radarr"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.32",
+    "pymediainfo>=7.0",
+    "pycountry>=24.6",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
+    "responses>=0.23",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=taggarr --cov-report=term-missing --cov-fail-under=100"
+markers = [
+    "integration: marks tests requiring external services (deselect with '-m not integration')",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["taggarr"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]
