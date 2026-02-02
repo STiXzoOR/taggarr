@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useState } from "react";
-import { useConfig, useSetConfig } from "~/lib/queries";
+import { useConfigs, useSetConfig } from "~/lib/queries";
 import { toast } from "~/lib/toast";
 import {
   Card,
@@ -62,9 +62,12 @@ function SettingsSidebar() {
 }
 
 function GeneralSettingsPage() {
-  const { data: scanInterval } = useConfig("scan_interval");
-  const { data: logLevel } = useConfig("log_level");
-  const { data: timezone } = useConfig("timezone");
+  // Fetch all config values in parallel to avoid request waterfalls
+  const { data: configs } = useConfigs([
+    "scan_interval",
+    "log_level",
+    "timezone",
+  ]);
   const setConfig = useSetConfig();
 
   const [formData, setFormData] = useState({
@@ -77,12 +80,16 @@ function GeneralSettingsPage() {
   // Update form data when configs load
   const currentScanInterval =
     formData.scan_interval ||
-    (scanInterval as { value?: string })?.value ||
+    (configs.scan_interval as { value?: string })?.value ||
     "60";
   const currentLogLevel =
-    formData.log_level || (logLevel as { value?: string })?.value || "info";
+    formData.log_level ||
+    (configs.log_level as { value?: string })?.value ||
+    "info";
   const currentTimezone =
-    formData.timezone || (timezone as { value?: string })?.value || "UTC";
+    formData.timezone ||
+    (configs.timezone as { value?: string })?.value ||
+    "UTC";
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));

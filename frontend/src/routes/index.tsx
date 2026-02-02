@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { useStats, useInstances, useMedia } from "~/lib/queries";
+import { useDashboardData } from "~/lib/queries";
 import { Badge } from "~/components/ui/badge";
 import {
   Skeleton,
@@ -53,12 +53,12 @@ interface Instance {
 }
 
 function Dashboard() {
-  const { data: stats, isLoading: statsLoading } = useStats();
-  const { data: instances, isLoading: instancesLoading } = useInstances();
-  const { data: recentMedia, isLoading: mediaLoading } = useMedia({
-    page: 1,
-    page_size: 5,
-  });
+  // Fetch all dashboard data in parallel to avoid request waterfalls
+  const {
+    stats: { data: stats, isLoading: statsLoading },
+    instances: { data: instances, isLoading: instancesLoading },
+    media: { data: recentMedia, isLoading: mediaLoading },
+  } = useDashboardData({ page: 1, page_size: 5 });
 
   const typedStats = stats as StatsData | undefined;
   const typedInstances = instances as Instance[] | undefined;

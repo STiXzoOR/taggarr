@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueries,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { api } from "./api";
 
 export const queryKeys = {
@@ -164,4 +169,80 @@ export function useUIConfig() {
     queryKey: queryKeys.uiConfig,
     queryFn: api.getUIConfig,
   });
+}
+
+/**
+ * Fetch multiple config keys in parallel using useQueries.
+ * Returns an object with each key mapped to its query result.
+ */
+export function useConfigs<T extends string>(keys: T[]) {
+  const results = useQueries({
+    queries: keys.map((key) => ({
+      queryKey: queryKeys.config(key),
+      queryFn: () => api.getConfig(key),
+      enabled: !!key,
+    })),
+  });
+
+  // Map results back to their keys for easy access
+  const data = keys.reduce(
+    (acc, key, index) => {
+      acc[key] = results[index]?.data;
+      return acc;
+    },
+    {} as Record<T, unknown>,
+  );
+
+  const isLoading = results.some((r) => r.isLoading);
+  const isError = results.some((r) => r.isError);
+
+  return { data, results, isLoading, isError };
+}
+
+/**
+ * Fetch dashboard data (stats, instances, media) in parallel using useQueries.
+ * Eliminates waterfall requests by fetching all data simultaneously.
+ */
+export function useDashboardData(mediaParams?: {
+  page: number;
+  page_size: number;
+}) {
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: queryKeys.stats,
+        queryFn: api.getStats,
+      },
+      {
+        queryKey: queryKeys.instances,
+        queryFn: api.getInstances,
+      },
+      {
+        queryKey: queryKeys.media(mediaParams),
+        queryFn: () => api.getMedia(mediaParams),
+      },
+    ],
+  });
+
+  const [statsQuery, instancesQuery, mediaQuery] = results;
+
+  return {
+    stats: {
+      data: statsQuery.data,
+      isLoading: statsQuery.isLoading,
+      isError: statsQuery.isError,
+    },
+    instances: {
+      data: instancesQuery.data,
+      isLoading: instancesQuery.isLoading,
+      isError: instancesQuery.isError,
+    },
+    media: {
+      data: mediaQuery.data,
+      isLoading: mediaQuery.isLoading,
+      isError: mediaQuery.isError,
+    },
+    isLoading: results.some((r) => r.isLoading),
+    isError: results.some((r) => r.isError),
+  };
 }
