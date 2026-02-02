@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "~/lib/toast";
 import {
@@ -89,6 +89,10 @@ const eventOptions = [
 ];
 
 function NotificationsSettingsPage() {
+  useEffect(() => {
+    document.title = "Notifications - Settings - Taggarr";
+  }, []);
+
   const queryClient = useQueryClient();
 
   const { data: channels, isLoading } = useQuery({
@@ -366,7 +370,10 @@ function NotificationsSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Settings</h1>
+      <div>
+        <p className="text-sm text-muted-foreground">Settings</p>
+        <h1 className="text-3xl font-bold">Notifications</h1>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
         <SettingsSidebar />

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useConfigs, useSetConfig } from "~/lib/queries";
 import { toast } from "~/lib/toast";
 import {
@@ -62,6 +62,10 @@ function SettingsSidebar() {
 }
 
 function GeneralSettingsPage() {
+  useEffect(() => {
+    document.title = "General - Settings - Taggarr";
+  }, []);
+
   // Fetch all config values in parallel to avoid request waterfalls
   const { data: configs } = useConfigs([
     "scan_interval",
@@ -130,7 +134,10 @@ function GeneralSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Settings</h1>
+      <div>
+        <p className="text-sm text-muted-foreground">Settings</p>
+        <h1 className="text-3xl font-bold">General</h1>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
         <SettingsSidebar />
