@@ -1,21 +1,26 @@
 # Use official Python image
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies (pymediainfo requires mediainfo)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends mediainfo && \
+    apt-get install -y --no-install-recommends mediainfo curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-COPY main.py /app/  
+# Copy project files
+COPY pyproject.toml uv.lock ./
+COPY taggarr/ ./taggarr/
+COPY main.py ./
 
-# Default environment variables (override in CasaOS)
+# Install dependencies using uv
+RUN uv sync --frozen --no-dev
+
+# Default environment variables (override in docker-compose)
 # Sonarr (TV Shows)
 ENV SONARR_API_KEY=""
 ENV SONARR_URL="http://192.168.0.1:8989"
@@ -42,5 +47,4 @@ ENV TARGET_LANGUAGES="english"
 ENV ADD_TAG_TO_GENRE="false"
 
 # Entrypoint
-CMD ["python", "main.py"]
-
+CMD ["uv", "run", "taggarr", "--loop"]
