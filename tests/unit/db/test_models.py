@@ -6,7 +6,17 @@ from pathlib import Path
 from sqlalchemy import text
 
 from taggarr.db.database import create_engine, get_session
-from taggarr.db.models import ApiKey, Base, Config, Instance, SessionModel, User
+from taggarr.db.models import (
+    ApiKey,
+    Base,
+    Config,
+    Instance,
+    Media,
+    Season,
+    SessionModel,
+    Tag,
+    User,
+)
 
 
 class TestUserModel:
@@ -202,3 +212,165 @@ class TestInstanceModel:
             assert row.require_original_default == 0
             assert row.notify_on_wrong_dub == 1
             assert row.notify_on_original_missing == 0
+
+
+class TestTagModel:
+    """Tests for Tag model."""
+
+    def test_tag_model_create(self, tmp_path: Path) -> None:
+        """Tag model should store label."""
+        db_path = tmp_path / "test.db"
+        url = f"sqlite:///{db_path}"
+        engine = create_engine(url)
+        Base.metadata.create_all(engine)
+
+        with get_session(engine) as session:
+            tag = Tag(label="dub")
+            session.add(tag)
+
+        with get_session(engine) as session:
+            result = session.execute(text("SELECT * FROM tags"))
+            row = result.fetchone()
+
+            assert row is not None
+            assert row.label == "dub"
+
+
+class TestMediaModel:
+    """Tests for Media model."""
+
+    def test_media_model_create(self, tmp_path: Path) -> None:
+        """Media model should link to instance and tag."""
+        db_path = tmp_path / "test.db"
+        url = f"sqlite:///{db_path}"
+        engine = create_engine(url)
+        Base.metadata.create_all(engine)
+
+        added_time = datetime.now(timezone.utc)
+        last_scanned = datetime.now(timezone.utc)
+
+        with get_session(engine) as session:
+            instance = Instance(
+                name="Sonarr Main",
+                type="sonarr",
+                url="http://localhost:8989",
+                api_key="abc123xyz",
+                root_path="/media/tv",
+                target_languages='["eng", "jpn"]',
+                tags='["dub"]',
+                quick_mode=0,
+                enabled=1,
+                require_original_default=0,
+                notify_on_wrong_dub=1,
+                notify_on_original_missing=0,
+            )
+            session.add(instance)
+            session.flush()
+
+            tag = Tag(label="dub")
+            session.add(tag)
+            session.flush()
+
+            media = Media(
+                instance_id=instance.id,
+                path="/media/tv/ShowName",
+                title="Show Name",
+                clean_title="showname",
+                media_type="series",
+                original_language="eng",
+                tag_id=tag.id,
+                added=added_time,
+                last_scanned=last_scanned,
+                last_modified=1704067200,
+                override_require_original=1,
+                override_notify=0,
+            )
+            session.add(media)
+
+        with get_session(engine) as session:
+            result = session.execute(text("SELECT * FROM media"))
+            row = result.fetchone()
+
+            assert row is not None
+            assert row.instance_id == 1
+            assert row.path == "/media/tv/ShowName"
+            assert row.title == "Show Name"
+            assert row.clean_title == "showname"
+            assert row.media_type == "series"
+            assert row.original_language == "eng"
+            assert row.tag_id == 1
+            assert row.added is not None
+            assert row.last_scanned is not None
+            assert row.last_modified == 1704067200
+            assert row.override_require_original == 1
+            assert row.override_notify == 0
+
+
+class TestSeasonModel:
+    """Tests for Season model."""
+
+    def test_season_model_create(self, tmp_path: Path) -> None:
+        """Season model should link to media with episode data."""
+        db_path = tmp_path / "test.db"
+        url = f"sqlite:///{db_path}"
+        engine = create_engine(url)
+        Base.metadata.create_all(engine)
+
+        added_time = datetime.now(timezone.utc)
+
+        with get_session(engine) as session:
+            instance = Instance(
+                name="Sonarr Main",
+                type="sonarr",
+                url="http://localhost:8989",
+                api_key="abc123xyz",
+                root_path="/media/tv",
+                target_languages='["eng", "jpn"]',
+                tags='["dub"]',
+                quick_mode=0,
+                enabled=1,
+                require_original_default=0,
+                notify_on_wrong_dub=1,
+                notify_on_original_missing=0,
+            )
+            session.add(instance)
+            session.flush()
+
+            media = Media(
+                instance_id=instance.id,
+                path="/media/tv/ShowName",
+                title="Show Name",
+                clean_title="showname",
+                media_type="series",
+                added=added_time,
+            )
+            session.add(media)
+            session.flush()
+
+            season = Season(
+                media_id=media.id,
+                season_number=1,
+                episode_count=12,
+                status="complete",
+                original_dub='["eng"]',
+                dub='["eng", "jpn"]',
+                missing_dub='["spa"]',
+                unexpected_languages='["fra"]',
+                last_modified=1704067200,
+            )
+            session.add(season)
+
+        with get_session(engine) as session:
+            result = session.execute(text("SELECT * FROM seasons"))
+            row = result.fetchone()
+
+            assert row is not None
+            assert row.media_id == 1
+            assert row.season_number == 1
+            assert row.episode_count == 12
+            assert row.status == "complete"
+            assert row.original_dub == '["eng"]'
+            assert row.dub == '["eng", "jpn"]'
+            assert row.missing_dub == '["spa"]'
+            assert row.unexpected_languages == '["fra"]'
+            assert row.last_modified == 1704067200
