@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from taggarr.api.routes import auth_router
+from taggarr.api.routes import apikeys_router, auth_router
 
 
 def create_app(base_url: str = "/") -> FastAPI:
@@ -42,5 +42,6 @@ def create_app(base_url: str = "/") -> FastAPI:
 
     # Include routers
     app.include_router(auth_router)
+    app.include_router(apikeys_router)
 
     return app
