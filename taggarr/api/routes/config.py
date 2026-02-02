@@ -10,6 +10,21 @@ from taggarr.db import Config, User
 router = APIRouter(prefix="/api/v1/config", tags=["config"])
 
 
+def _safe_int(value: str, default: int) -> int:
+    """Safely convert string to int, returning default on failure."""
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_bool(value: str, default: bool) -> bool:
+    """Safely convert string to bool, returning default on failure."""
+    if not isinstance(value, str):
+        return default
+    return value.lower() == "true"
+
+
 class ConfigValue(BaseModel):
     """Config value request/response."""
 
@@ -63,8 +78,8 @@ async def get_ui_config(
     return UIConfigResponse(
         theme=result["theme"],
         language=result["language"],
-        page_size=int(result["page_size"]),
-        auto_refresh=result["auto_refresh"].lower() == "true",
+        page_size=_safe_int(result["page_size"], 25),
+        auto_refresh=_safe_bool(result["auto_refresh"], True),
     )
 
 

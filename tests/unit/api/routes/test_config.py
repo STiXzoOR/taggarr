@@ -218,6 +218,86 @@ class TestGetUIConfig:
         assert data["auto_refresh"] is False
 
 
+class TestUIConfigInvalidData:
+    """Tests for invalid data handling in UI config endpoint."""
+
+    def test_get_ui_config_invalid_page_size(
+        self, authenticated_client, db_session: Session
+    ) -> None:
+        """GET /api/v1/config/ui handles invalid page_size gracefully."""
+        # Set invalid page_size value (non-integer)
+        config = Config(key="ui.page_size", value="not_a_number")
+        db_session.add(config)
+        db_session.commit()
+
+        response = authenticated_client.get("/api/v1/config/ui")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should fall back to default
+        assert data["page_size"] == 25
+
+    def test_get_ui_config_invalid_auto_refresh(
+        self, authenticated_client, db_session: Session
+    ) -> None:
+        """GET /api/v1/config/ui handles non-string auto_refresh gracefully."""
+        # Test with valid string that's not "true"
+        config = Config(key="ui.auto_refresh", value="invalid")
+        db_session.add(config)
+        db_session.commit()
+
+        response = authenticated_client.get("/api/v1/config/ui")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should be False since it's not "true"
+        assert data["auto_refresh"] is False
+
+
+class TestSafeTypeConversion:
+    """Tests for safe type conversion helper functions."""
+
+    def test_safe_int_valid_value(self) -> None:
+        """_safe_int converts valid string to int."""
+        from taggarr.api.routes.config import _safe_int
+
+        assert _safe_int("42", 10) == 42
+
+    def test_safe_int_invalid_value(self) -> None:
+        """_safe_int returns default for invalid string."""
+        from taggarr.api.routes.config import _safe_int
+
+        assert _safe_int("not_a_number", 10) == 10
+
+    def test_safe_int_none_value(self) -> None:
+        """_safe_int returns default for None."""
+        from taggarr.api.routes.config import _safe_int
+
+        assert _safe_int(None, 10) == 10
+
+    def test_safe_bool_true(self) -> None:
+        """_safe_bool converts 'true' to True."""
+        from taggarr.api.routes.config import _safe_bool
+
+        assert _safe_bool("true", False) is True
+        assert _safe_bool("TRUE", False) is True
+        assert _safe_bool("True", False) is True
+
+    def test_safe_bool_false(self) -> None:
+        """_safe_bool converts non-'true' to False."""
+        from taggarr.api.routes.config import _safe_bool
+
+        assert _safe_bool("false", True) is False
+        assert _safe_bool("other", True) is False
+
+    def test_safe_bool_non_string(self) -> None:
+        """_safe_bool returns default for non-string."""
+        from taggarr.api.routes.config import _safe_bool
+
+        assert _safe_bool(None, True) is True
+        assert _safe_bool(123, False) is False
+
+
 class TestConfigAuthRequired:
     """Tests for authentication requirement on config routes."""
 
