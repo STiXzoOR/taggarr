@@ -3,6 +3,7 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -83,10 +84,13 @@ class TestSchedulerUsesDefaultInterval:
 class TestSchedulerCreatesBackupRecord:
     """Tests for scheduler creating backup records."""
 
+    @patch("taggarr.workers.backup_scheduler.create_backup")
     def test_scheduler_creates_backup_record(
-        self, scheduler, session_factory
+        self, mock_create_backup, scheduler, session_factory, tmp_path
     ) -> None:
         """Scheduler should create a backup record in the database."""
+        mock_create_backup.return_value = (str(tmp_path / "backup.zip"), 1024)
+
         before = datetime.utcnow()
         scheduler._create_backup()
         after = datetime.utcnow()
@@ -100,10 +104,12 @@ class TestSchedulerCreatesBackupRecord:
             assert backup.filename.endswith(".zip")
             assert before <= backup.created_at <= after
 
+    @patch("taggarr.workers.backup_scheduler.create_backup")
     def test_scheduler_creates_backup_with_timestamp_filename(
-        self, scheduler, session_factory
+        self, mock_create_backup, scheduler, session_factory, tmp_path
     ) -> None:
         """Backup filename should include timestamp."""
+        mock_create_backup.return_value = (str(tmp_path / "backup.zip"), 1024)
         scheduler._create_backup()
 
         with session_factory() as session:
@@ -112,25 +118,42 @@ class TestSchedulerCreatesBackupRecord:
             assert backup.filename.startswith("taggarr_backup_20")  # Year starts with 20
             assert "_" in backup.filename
 
-    def test_scheduler_creates_backup_with_empty_path(
-        self, scheduler, session_factory
+    @patch("taggarr.workers.backup_scheduler.create_backup")
+    def test_scheduler_creates_backup_with_path(
+        self, mock_create_backup, scheduler, session_factory, tmp_path
     ) -> None:
-        """Backup should have empty path initially (filled when actual backup runs)."""
+        """Backup should have path from create_backup function."""
+        expected_path = str(tmp_path / "backup.zip")
+        mock_create_backup.return_value = (expected_path, 1024)
         scheduler._create_backup()
 
         with session_factory() as session:
             backup = session.query(Backup).first()
+            assert backup.path == expected_path
+
+    @patch("taggarr.workers.backup_scheduler.create_backup")
+    def test_scheduler_creates_backup_with_size(
+        self, mock_create_backup, scheduler, session_factory, tmp_path
+    ) -> None:
+        """Backup should have size from create_backup function."""
+        mock_create_backup.return_value = (str(tmp_path / "backup.zip"), 2048)
+        scheduler._create_backup()
+
+        with session_factory() as session:
+            backup = session.query(Backup).first()
+            assert backup.size_bytes == 2048
+
+    def test_scheduler_creates_failed_backup_record_on_error(
+        self, scheduler, session_factory
+    ) -> None:
+        """Scheduler should create a record with -1 size on failure."""
+        # No mocking - let it fail since there's no real db file
+        scheduler._create_backup()
+
+        with session_factory() as session:
+            backup = session.query(Backup).first()
+            assert backup.size_bytes == -1
             assert backup.path == ""
-
-    def test_scheduler_creates_backup_with_zero_size(
-        self, scheduler, session_factory
-    ) -> None:
-        """Backup should have zero size initially (filled when actual backup runs)."""
-        scheduler._create_backup()
-
-        with session_factory() as session:
-            backup = session.query(Backup).first()
-            assert backup.size_bytes == 0
 
 
 class TestSchedulerAppliesRetentionPolicy:

@@ -24,8 +24,12 @@ import {
   AlertCircle,
   Loader2,
   XCircle,
+  Wifi,
+  WifiOff,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { useLogStream } from "~/hooks/useLogStream";
 
 export const Route = createFileRoute("/activity/")({
   component: ActivityPage,
@@ -58,16 +62,21 @@ interface QueueItem {
 }
 
 interface LogEntry {
-  id: number;
-  level: string;
-  message: string;
   timestamp: string;
-  source?: string;
+  level: string;
+  logger: string;
+  message: string;
+  module: string;
+  funcName: string;
+  lineno: number;
 }
 
 function ActivityPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const pageSize = 20;
+
+  // Use WebSocket-based log streaming
+  const { logs: streamedLogs, isConnected, clearLogs } = useLogStream();
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ["activity", "history", historyPage],
@@ -93,21 +102,8 @@ function ActivityPage() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  const {
-    data: logsData,
-    isLoading: logsLoading,
-    refetch: refetchLogs,
-  } = useQuery({
-    queryKey: ["activity", "logs"],
-    queryFn: () =>
-      fetch("/api/v1/activity/logs?limit=100", { credentials: "include" }).then(
-        (res) => res.json(),
-      ),
-  });
-
   const typedHistory = historyData as HistoryResponse | undefined;
   const typedQueue = queueData as QueueItem[] | undefined;
-  const typedLogs = logsData as LogEntry[] | undefined;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -330,27 +326,44 @@ function ActivityPage() {
           </Card>
         </TabsContent>
 
-        {/* Logs Tab */}
+        {/* Logs Tab - Live WebSocket Stream */}
         <TabsContent value="logs">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Recent Logs</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => refetchLogs()}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">Live Logs</CardTitle>
+                {isConnected ? (
+                  <Badge
+                    variant="outline"
+                    className="text-green-500 border-green-500"
+                  >
+                    <Wifi className="h-3 w-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="text-red-500 border-red-500"
+                  >
+                    <WifiOff className="h-3 w-3 mr-1" />
+                    Disconnected
+                  </Badge>
+                )}
+              </div>
+              <Button variant="outline" size="sm" onClick={clearLogs}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {logsLoading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading logs...
-                </div>
-              ) : !typedLogs || typedLogs.length === 0 ? (
+              {streamedLogs.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No logs available</p>
                   <p className="text-sm mt-1">
-                    Application logs will appear here
+                    {isConnected
+                      ? "Application logs will appear here in real-time"
+                      : "Reconnecting to log stream..."}
                   </p>
                 </div>
               ) : (
@@ -360,19 +373,19 @@ function ActivityPage() {
                       <TableRow>
                         <TableHead className="w-[100px]">Level</TableHead>
                         <TableHead className="w-[180px]">Time</TableHead>
-                        <TableHead className="w-[120px]">Source</TableHead>
+                        <TableHead className="w-[120px]">Module</TableHead>
                         <TableHead>Message</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {typedLogs.map((log) => (
-                        <TableRow key={log.id}>
+                      {streamedLogs.map((log, index) => (
+                        <TableRow key={`${log.timestamp}-${index}`}>
                           <TableCell>{getLogLevelBadge(log.level)}</TableCell>
                           <TableCell className="text-muted-foreground font-mono text-xs">
                             {new Date(log.timestamp).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
-                            {log.source || "-"}
+                            {log.module || log.logger || "-"}
                           </TableCell>
                           <TableCell className="font-mono text-sm">
                             {log.message}

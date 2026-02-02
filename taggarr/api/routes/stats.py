@@ -1,8 +1,9 @@
 """Stats and system status routes for taggarr API."""
 
+import os
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -127,15 +128,16 @@ def _count_media_by_tag(db: Session) -> dict[str, int]:
 
 @router.get("/system/status", response_model=SystemStatusResponse)
 async def get_system_status(
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SystemStatusResponse:
     """Get system status information.
 
     Returns version, uptime, database size, and last backup time.
-    Note: Uptime and database size are mocked for now.
 
     Args:
+        request: FastAPI request object for accessing app state.
         user: Current authenticated user.
         db: Database session.
 
@@ -143,6 +145,18 @@ async def get_system_status(
         System status response with version and health information.
     """
     from taggarr import __version__
+
+    # Calculate uptime from startup_time
+    uptime_seconds = 0
+    startup_time = getattr(request.app.state, "startup_time", None)
+    if startup_time:
+        uptime_seconds = int((datetime.now(timezone.utc) - startup_time).total_seconds())
+
+    # Get database size from file
+    database_size_bytes = 0
+    db_path = getattr(request.app.state, "db_path", None)
+    if db_path and os.path.exists(db_path):
+        database_size_bytes = os.path.getsize(db_path)
 
     # Get most recent backup
     last_backup = (
@@ -153,7 +167,7 @@ async def get_system_status(
 
     return SystemStatusResponse(
         version=__version__,
-        uptime_seconds=0,  # Mocked for now - actual tracking in Phase 4
-        database_size_bytes=0,  # Mocked for now
+        uptime_seconds=uptime_seconds,
+        database_size_bytes=database_size_bytes,
         last_backup=last_backup.created_at if last_backup else None,
     )

@@ -3,6 +3,7 @@
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -153,10 +154,18 @@ class TestProcessorMarksCommandStarted:
 class TestProcessorMarksCommandCompleted:
     """Tests for processor marking commands as completed."""
 
+    @patch("taggarr.workers.command_processor.HANDLERS")
     def test_processor_marks_command_completed(
-        self, processor, session_factory
+        self, mock_handlers, processor, session_factory
     ) -> None:
         """Processor should set status to Completed after successful execution."""
+        # Mock handler that succeeds
+        mock_handler_class = MagicMock()
+        mock_handler_instance = AsyncMock()
+        mock_handler_instance.execute = AsyncMock()
+        mock_handler_class.return_value = mock_handler_instance
+        mock_handlers.get.return_value = mock_handler_class
+
         with session_factory() as session:
             command = Command(
                 name="test_complete",
@@ -175,10 +184,18 @@ class TestProcessorMarksCommandCompleted:
             command = session.query(Command).get(command_id)
             assert command.status == "Completed"
 
+    @patch("taggarr.workers.command_processor.HANDLERS")
     def test_processor_sets_ended_at_timestamp(
-        self, processor, session_factory
+        self, mock_handlers, processor, session_factory
     ) -> None:
         """Processor should set ended_at when completing a command."""
+        # Mock handler that succeeds
+        mock_handler_class = MagicMock()
+        mock_handler_instance = AsyncMock()
+        mock_handler_instance.execute = AsyncMock()
+        mock_handler_class.return_value = mock_handler_instance
+        mock_handlers.get.return_value = mock_handler_class
+
         with session_factory() as session:
             command = Command(
                 name="test_ended_at",

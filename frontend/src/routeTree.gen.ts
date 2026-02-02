@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SystemRouteImport } from './routes/system'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
@@ -22,6 +23,11 @@ import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
 import { Route as SettingsBackupRouteImport } from './routes/settings/backup'
 import { Route as LibraryMediaIdRouteImport } from './routes/library/$mediaId'
 
+const SystemRoute = SystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/system': typeof SystemRoute
   '/library/$mediaId': typeof LibraryMediaIdRoute
   '/settings/backup': typeof SettingsBackupRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/system': typeof SystemRoute
   '/library/$mediaId': typeof LibraryMediaIdRoute
   '/settings/backup': typeof SettingsBackupRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/system': typeof SystemRoute
   '/library/$mediaId': typeof LibraryMediaIdRoute
   '/settings/backup': typeof SettingsBackupRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/setup'
+    | '/system'
     | '/library/$mediaId'
     | '/settings/backup'
     | '/settings/general'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/setup'
+    | '/system'
     | '/library/$mediaId'
     | '/settings/backup'
     | '/settings/general'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/setup'
+    | '/system'
     | '/library/$mediaId'
     | '/settings/backup'
     | '/settings/general'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   SetupRoute: typeof SetupRoute
+  SystemRoute: typeof SystemRoute
   LibraryMediaIdRoute: typeof LibraryMediaIdRoute
   SettingsBackupRoute: typeof SettingsBackupRoute
   SettingsGeneralRoute: typeof SettingsGeneralRoute
@@ -188,6 +201,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/system': {
+      id: '/system'
+      path: '/system'
+      fullPath: '/system'
+      preLoaderRoute: typeof SystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/setup': {
       id: '/setup'
       path: '/setup'
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   SetupRoute: SetupRoute,
+  SystemRoute: SystemRoute,
   LibraryMediaIdRoute: LibraryMediaIdRoute,
   SettingsBackupRoute: SettingsBackupRoute,
   SettingsGeneralRoute: SettingsGeneralRoute,

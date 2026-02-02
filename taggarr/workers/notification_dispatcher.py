@@ -1,9 +1,15 @@
 """Notification dispatcher for taggarr."""
 
+import asyncio
+import json
+import logging
 from datetime import datetime, timezone
 from enum import Enum
 
 from taggarr.db import Notification, NotificationStatus
+from taggarr.workers.providers import get_provider
+
+logger = logging.getLogger("taggarr")
 
 
 class NotificationEvent(Enum):
@@ -63,15 +69,34 @@ class NotificationDispatcher:
         return query.all()
 
     def _send(self, notification: Notification, title: str, message: str):
-        """Send notification via provider. Override for actual implementation.
+        """Send notification via provider.
 
         Args:
             notification: The notification configuration.
             title: The notification title.
             message: The notification message body.
         """
-        # Placeholder - actual provider implementations will be added
-        pass
+        try:
+            provider_class = get_provider(notification.implementation)
+            provider = provider_class()
+
+            # Parse settings if stored as JSON string
+            settings = notification.settings
+            if isinstance(settings, str):
+                settings = json.loads(settings)
+
+            # Run the async send in a new event loop if needed
+            asyncio.run(provider.send(title, message, settings))
+
+            logger.info(
+                f"Notification sent via {notification.implementation}: {title}"
+            )
+        except ValueError as e:
+            logger.error(f"Notification provider error: {e}")
+        except Exception as e:
+            logger.error(
+                f"Failed to send notification via {notification.implementation}: {e}"
+            )
 
     def _update_status(self, db, notification_id: int):
         """Update last sent timestamp.

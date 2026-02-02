@@ -1,12 +1,17 @@
 """Backup scheduler for taggarr."""
 
 import asyncio
+import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Callable
 
 from sqlalchemy.orm import Session
 
+from taggarr.backup.operations import create_backup
 from taggarr.db import Backup, Config
+
+logger = logging.getLogger("taggarr")
 
 
 class BackupScheduler:
@@ -56,17 +61,39 @@ class BackupScheduler:
             return int(config.value) if config else 28
 
     def _create_backup(self) -> None:
-        """Create a scheduled backup record."""
+        """Create a scheduled backup."""
         with self._session_factory() as db:
+            # Get db_path from config
+            config = db.query(Config).filter(Config.key == "db.path").first()
+            db_path = Path(config.value) if config else Path("./taggarr.db")
+
+            # Get backup directory from config
+            config = db.query(Config).filter(Config.key == "backup.directory").first()
+            backup_dir = Path(config.value) if config else Path("./backups")
+
             now = datetime.utcnow()
             filename = f"taggarr_backup_{now.strftime('%Y%m%d_%H%M%S')}.zip"
-            backup = Backup(
-                filename=filename,
-                path="",  # Will be updated when actual backup is created
-                size_bytes=0,  # Will be updated when actual backup is created
-                type="scheduled",
-                created_at=now,
-            )
+
+            try:
+                path, size = create_backup(db_path, backup_dir)
+                backup = Backup(
+                    filename=filename,
+                    path=path,
+                    size_bytes=size,
+                    type="scheduled",
+                    created_at=now,
+                )
+                logger.info(f"Scheduled backup created: {path}")
+            except Exception as e:
+                logger.error(f"Scheduled backup failed: {e}")
+                backup = Backup(
+                    filename=filename,
+                    path="",
+                    size_bytes=-1,  # Indicates failure
+                    type="scheduled",
+                    created_at=now,
+                )
+
             db.add(backup)
             db.commit()
 

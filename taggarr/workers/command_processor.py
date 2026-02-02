@@ -1,12 +1,17 @@
 """Command queue processor for taggarr."""
 
 import asyncio
+import json
+import logging
 from datetime import datetime
 from typing import Callable
 
 from sqlalchemy.orm import Session
 
 from taggarr.db import Command
+from taggarr.workers.handlers import HANDLERS
+
+logger = logging.getLogger("taggarr")
 
 
 class CommandProcessor:
@@ -70,11 +75,18 @@ class CommandProcessor:
     async def _execute(self, name: str, body: str | None) -> None:
         """Execute a command by name.
 
-        Override in subclass for actual implementation.
-
         Args:
             name: The command name to execute.
             body: Optional JSON body containing command parameters.
+
+        Raises:
+            ValueError: If the command name is not recognized.
         """
-        # Placeholder - actual command handlers will be added
-        pass
+        handler_class = HANDLERS.get(name)
+        if not handler_class:
+            logger.warning(f"Unknown command: {name}")
+            raise ValueError(f"Unknown command: {name}")
+
+        params = json.loads(body) if body else {}
+        handler = handler_class(self._session_factory)
+        await handler.execute(**params)

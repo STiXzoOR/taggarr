@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "~/lib/api";
 import {
   Card,
@@ -54,31 +54,35 @@ export const Route = createFileRoute("/library/$mediaId")({
 interface MediaDetail {
   id: number;
   title: string;
-  type: string;
+  media_type: string;
   instance_id: number;
   instance_name?: string;
   tag_id?: number;
-  tag_name?: string;
-  external_id?: string;
+  tag_label?: string;
   path?: string;
   last_scanned?: string;
-  created_at?: string;
-  updated_at?: string;
+  added?: string;
   seasons?: Season[];
-  override_enabled?: boolean;
-  override_target_languages?: string[];
+  override_require_original?: boolean | null;
+  override_notify?: boolean | null;
 }
 
 interface Season {
   season_number: number;
   episode_count: number;
-  dubbed_count: number;
-  status: string;
+  status?: string;
 }
 
 function MediaDetailPage() {
   const { mediaId } = Route.useParams();
   const [overrideOpen, setOverrideOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Form state for override settings
+  const [overrideRequireOriginal, setOverrideRequireOriginal] = useState<
+    boolean | null
+  >(null);
+  const [overrideNotify, setOverrideNotify] = useState<boolean | null>(null);
 
   const { data: media, isLoading } = useQuery({
     queryKey: ["media", mediaId],
@@ -90,8 +94,36 @@ function MediaDetailPage() {
 
   const typedMedia = media as MediaDetail | undefined;
 
-  const getTagBadgeClass = (tagName?: string) => {
-    switch (tagName) {
+  // Mutation for updating media overrides
+  const updateMediaMutation = useMutation({
+    mutationFn: (data: {
+      override_require_original?: boolean | null;
+      override_notify?: boolean | null;
+    }) => api.updateMedia(Number(mediaId), data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media", mediaId] });
+      setOverrideOpen(false);
+    },
+  });
+
+  // Sync form state when media loads or dialog opens
+  const handleOpenChange = (open: boolean) => {
+    if (open && typedMedia) {
+      setOverrideRequireOriginal(typedMedia.override_require_original ?? null);
+      setOverrideNotify(typedMedia.override_notify ?? null);
+    }
+    setOverrideOpen(open);
+  };
+
+  const handleSaveOverrides = () => {
+    updateMediaMutation.mutate({
+      override_require_original: overrideRequireOriginal,
+      override_notify: overrideNotify,
+    });
+  };
+
+  const getTagBadgeClass = (tagLabel?: string) => {
+    switch (tagLabel) {
       case "dub":
         return "bg-green-500 hover:bg-green-600";
       case "semi-dub":
@@ -141,7 +173,8 @@ function MediaDetailPage() {
     );
   }
 
-  const isShow = typedMedia.type === "show" || typedMedia.type === "series";
+  const isShow =
+    typedMedia.media_type === "show" || typedMedia.media_type === "series";
 
   return (
     <div className="space-y-6">
@@ -174,7 +207,7 @@ function MediaDetailPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Rescan
           </Button>
-          <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
+          <Dialog open={overrideOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <Settings className="mr-2 h-4 w-4" />
@@ -190,32 +223,75 @@ function MediaDetailPage() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="override-enabled">Enable Override</Label>
+                  <Label htmlFor="override-require-original">
+                    Require Original Language
+                  </Label>
                   <Select
-                    defaultValue={typedMedia.override_enabled ? "yes" : "no"}
+                    value={
+                      overrideRequireOriginal === null
+                        ? "default"
+                        : overrideRequireOriginal
+                          ? "yes"
+                          : "no"
+                    }
+                    onValueChange={(value) =>
+                      setOverrideRequireOriginal(
+                        value === "default" ? null : value === "yes",
+                      )
+                    }
                   >
-                    <SelectTrigger id="override-enabled">
+                    <SelectTrigger id="override-require-original">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="no">
-                        No (use instance defaults)
+                      <SelectItem value="default">
+                        Use instance default
                       </SelectItem>
-                      <SelectItem value="yes">Yes (custom settings)</SelectItem>
+                      <SelectItem value="yes">
+                        Yes (require original)
+                      </SelectItem>
+                      <SelectItem value="no">
+                        No (skip original check)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Whether to require original language audio
+                  </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="target-languages">Target Languages</Label>
-                  <Input
-                    id="target-languages"
-                    placeholder="e.g., eng, spa, jpn"
-                    defaultValue={
-                      typedMedia.override_target_languages?.join(", ") || ""
+                  <Label htmlFor="override-notify">Notifications</Label>
+                  <Select
+                    value={
+                      overrideNotify === null
+                        ? "default"
+                        : overrideNotify
+                          ? "yes"
+                          : "no"
                     }
-                  />
+                    onValueChange={(value) =>
+                      setOverrideNotify(
+                        value === "default" ? null : value === "yes",
+                      )
+                    }
+                  >
+                    <SelectTrigger id="override-notify">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">
+                        Use instance default
+                      </SelectItem>
+                      <SelectItem value="yes">
+                        Yes (send notifications)
+                      </SelectItem>
+                      <SelectItem value="no">
+                        No (skip notifications)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-muted-foreground">
-                    Comma-separated ISO 639-2 language codes
+                    Whether to send notifications for this media
                   </p>
                 </div>
               </div>
@@ -226,8 +302,11 @@ function MediaDetailPage() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={() => setOverrideOpen(false)}>
-                  Save Changes
+                <Button
+                  onClick={handleSaveOverrides}
+                  disabled={updateMediaMutation.isPending}
+                >
+                  {updateMediaMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -248,19 +327,13 @@ function MediaDetailPage() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Tag</span>
-              {typedMedia.tag_name ? (
-                <Badge className={getTagBadgeClass(typedMedia.tag_name)}>
-                  {typedMedia.tag_name}
+              {typedMedia.tag_label ? (
+                <Badge className={getTagBadgeClass(typedMedia.tag_label)}>
+                  {typedMedia.tag_label}
                 </Badge>
               ) : (
                 <Badge variant="outline">none</Badge>
               )}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">External ID</span>
-              <span className="font-mono text-sm">
-                {typedMedia.external_id || "N/A"}
-              </span>
             </div>
             {typedMedia.path && (
               <div className="space-y-1">
@@ -292,22 +365,11 @@ function MediaDetailPage() {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Created
+                Added
               </span>
               <span>
-                {typedMedia.created_at
-                  ? new Date(typedMedia.created_at).toLocaleString()
-                  : "N/A"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground flex items-center gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Updated
-              </span>
-              <span>
-                {typedMedia.updated_at
-                  ? new Date(typedMedia.updated_at).toLocaleString()
+                {typedMedia.added
+                  ? new Date(typedMedia.added).toLocaleString()
                   : "N/A"}
               </span>
             </div>
@@ -328,7 +390,6 @@ function MediaDetailPage() {
                 <TableRow>
                   <TableHead>Season</TableHead>
                   <TableHead>Episodes</TableHead>
-                  <TableHead>Dubbed</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -340,27 +401,8 @@ function MediaDetailPage() {
                     </TableCell>
                     <TableCell>{season.episode_count}</TableCell>
                     <TableCell>
-                      {season.dubbed_count} / {season.episode_count}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          season.dubbed_count === season.episode_count
-                            ? "bg-green-500"
-                            : season.dubbed_count > 0
-                              ? "bg-yellow-500"
-                              : ""
-                        }
-                        variant={
-                          season.dubbed_count === 0 ? "outline" : "default"
-                        }
-                      >
-                        {season.status ||
-                          (season.dubbed_count === season.episode_count
-                            ? "Complete"
-                            : season.dubbed_count > 0
-                              ? "Partial"
-                              : "None")}
+                      <Badge variant="outline">
+                        {season.status || "Unknown"}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -372,7 +414,8 @@ function MediaDetailPage() {
       )}
 
       {/* Override indicator */}
-      {typedMedia.override_enabled && (
+      {(typedMedia.override_require_original !== null ||
+        typedMedia.override_notify !== null) && (
         <Card className="border-yellow-500/50">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -385,13 +428,24 @@ function MediaDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Target Languages</span>
-                <span>
-                  {typedMedia.override_target_languages?.join(", ") ||
-                    "Not configured"}
-                </span>
-              </div>
+              {typedMedia.override_require_original !== null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    Require Original Language
+                  </span>
+                  <Badge variant="outline">
+                    {typedMedia.override_require_original ? "Yes" : "No"}
+                  </Badge>
+                </div>
+              )}
+              {typedMedia.override_notify !== null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Notifications</span>
+                  <Badge variant="outline">
+                    {typedMedia.override_notify ? "Enabled" : "Disabled"}
+                  </Badge>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

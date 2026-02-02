@@ -1,6 +1,7 @@
 """Tests for notification management routes."""
 
 import json
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -427,8 +428,16 @@ class TestNotificationSchema:
 class TestTestNotification:
     """Tests for POST /api/v1/notification/test endpoint."""
 
-    def test_test_notification_success(self, authenticated_client) -> None:
+    @patch("taggarr.api.routes.notifications.get_provider")
+    def test_test_notification_success(
+        self, mock_get_provider, authenticated_client
+    ) -> None:
         """POST /api/v1/notification/test returns success for valid config."""
+        # Mock the provider to return success
+        mock_provider = AsyncMock()
+        mock_provider.test.return_value = (True, "Test successful")
+        mock_get_provider.return_value = lambda: mock_provider
+
         response = authenticated_client.post(
             "/api/v1/notification/test",
             json={

@@ -6,12 +6,14 @@ import {
   Settings,
   Activity,
   Server,
+  Monitor,
 } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/library", icon: Library, label: "Library" },
   { to: "/activity", icon: Activity, label: "Activity" },
+  { to: "/system", icon: Monitor, label: "System" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ] as const;
 

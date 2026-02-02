@@ -1,6 +1,8 @@
 """Tests for backup routes."""
 
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -179,10 +181,18 @@ class TestListBackups:
 class TestCreateBackup:
     """Tests for POST /api/v1/backup endpoint."""
 
+    @patch("taggarr.api.routes.backups.create_backup")
     def test_create_backup_success(
-        self, authenticated_client, db_session: Session
+        self, mock_create_backup, authenticated_client, db_session: Session, tmp_path
     ) -> None:
         """POST /api/v1/backup creates a backup record."""
+        # Mock the create_backup function
+        mock_backup_path = str(tmp_path / "backup.zip")
+        mock_create_backup.return_value = (mock_backup_path, 1024)
+
+        # Set up app state with db_path
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
+
         response = authenticated_client.post("/api/v1/backup")
 
         assert response.status_code == 201
@@ -230,31 +240,97 @@ class TestDeleteBackup:
 class TestDownloadBackup:
     """Tests for GET /api/v1/backup/{id}/download endpoint."""
 
-    def test_download_backup_not_implemented(
-        self, authenticated_client, db_session: Session
+    def test_download_backup_success(
+        self, authenticated_client, db_session: Session, tmp_path
     ) -> None:
-        """GET /api/v1/backup/{id}/download returns 501 Not Implemented."""
-        backup = create_backup_in_db(db_session)
+        """GET /api/v1/backup/{id}/download returns the backup file."""
+        # Create actual backup file
+        backup_file = tmp_path / "test_backup.zip"
+        backup_file.write_bytes(b"PK\x03\x04test backup content")
+
+        backup = create_backup_in_db(
+            db_session,
+            path=str(backup_file),
+        )
 
         response = authenticated_client.get(f"/api/v1/backup/{backup.id}/download")
 
-        assert response.status_code == 501
-        assert response.json()["detail"] == "Backup download not yet implemented"
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/zip"
+
+    def test_download_backup_not_found(
+        self, authenticated_client, db_session: Session
+    ) -> None:
+        """GET /api/v1/backup/{id}/download returns 404 for non-existent backup."""
+        response = authenticated_client.get("/api/v1/backup/9999/download")
+
+        assert response.status_code == 404
+
+    def test_download_backup_file_missing(
+        self, authenticated_client, db_session: Session
+    ) -> None:
+        """GET /api/v1/backup/{id}/download returns 404 if file is missing."""
+        backup = create_backup_in_db(
+            db_session,
+            path="/nonexistent/backup.zip",
+        )
+
+        response = authenticated_client.get(f"/api/v1/backup/{backup.id}/download")
+
+        assert response.status_code == 404
+        assert "not found on disk" in response.json()["detail"]
 
 
 class TestRestoreBackup:
     """Tests for POST /api/v1/backup/{id}/restore endpoint."""
 
-    def test_restore_backup_not_implemented(
-        self, authenticated_client, db_session: Session
+    @patch("taggarr.api.routes.backups.restore_backup")
+    def test_restore_backup_success(
+        self, mock_restore, authenticated_client, db_session: Session, tmp_path
     ) -> None:
-        """POST /api/v1/backup/{id}/restore returns 501 Not Implemented."""
-        backup = create_backup_in_db(db_session)
+        """POST /api/v1/backup/{id}/restore restores from backup."""
+        # Create actual backup file
+        backup_file = tmp_path / "test_backup.zip"
+        backup_file.write_bytes(b"PK\x03\x04test backup content")
+
+        backup = create_backup_in_db(
+            db_session,
+            path=str(backup_file),
+        )
+
+        # Set up app state with db_path
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
 
         response = authenticated_client.post(f"/api/v1/backup/{backup.id}/restore")
 
-        assert response.status_code == 501
-        assert response.json()["detail"] == "Backup restore not yet implemented"
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "restart" in data["message"].lower()
+
+    def test_restore_backup_not_found(
+        self, authenticated_client, db_session: Session
+    ) -> None:
+        """POST /api/v1/backup/{id}/restore returns 404 for non-existent backup."""
+        response = authenticated_client.post("/api/v1/backup/9999/restore")
+
+        assert response.status_code == 404
+
+    def test_restore_backup_file_missing(
+        self, authenticated_client, db_session: Session, tmp_path
+    ) -> None:
+        """POST /api/v1/backup/{id}/restore returns 404 if file is missing."""
+        backup = create_backup_in_db(
+            db_session,
+            path="/nonexistent/backup.zip",
+        )
+
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
+
+        response = authenticated_client.post(f"/api/v1/backup/{backup.id}/restore")
+
+        assert response.status_code == 404
+        assert "not found on disk" in response.json()["detail"]
 
 
 class TestBackupAuthRequired:

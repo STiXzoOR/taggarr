@@ -1,5 +1,6 @@
 """Notification management routes for taggarr API."""
 
+import asyncio
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from taggarr.api.deps import get_current_user, get_db
 from taggarr.db import Notification, User
+from taggarr.workers.providers import get_provider
 
 router = APIRouter(prefix="/api/v1", tags=["notifications"])
 
@@ -176,12 +178,21 @@ async def test_notification(
             message=f"Unknown implementation: {request.implementation}",
         )
 
-    # For now, just validate and return mock success
-    # Actual notification sending will be added later
-    return TestNotificationResponse(
-        success=True,
-        message=f"Test notification to {request.implementation} validated (mock)",
-    )
+    try:
+        provider_class = get_provider(request.implementation)
+        provider = provider_class()
+        success, message = await provider.test(request.settings)
+        return TestNotificationResponse(success=success, message=message)
+    except ValueError as e:
+        return TestNotificationResponse(
+            success=False,
+            message=str(e),
+        )
+    except Exception as e:
+        return TestNotificationResponse(
+            success=False,
+            message=f"Test failed: {e}",
+        )
 
 
 @router.get("/notification/schema", response_model=list[NotificationProviderSchema])

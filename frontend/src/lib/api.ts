@@ -4,7 +4,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public statusText: string,
-    message?: string
+    message?: string,
   ) {
     super(message || statusText);
     this.name = "ApiError";
@@ -43,7 +43,7 @@ export const api = {
         authenticated: boolean;
         user: { username: string } | null;
         initialized: boolean;
-      }>
+      }>,
     ),
 
   initialize: (username: string, password: string) =>
@@ -60,18 +60,18 @@ export const api = {
 
   getSystemStatus: () =>
     fetch(`${API_BASE}/system/status`, { credentials: "include" }).then(
-      handleResponse
+      handleResponse,
     ),
 
   // Instances
   getInstances: () =>
     fetch(`${API_BASE}/instance`, { credentials: "include" }).then(
-      handleResponse
+      handleResponse,
     ),
 
   getInstance: (id: number) =>
     fetch(`${API_BASE}/instance/${id}`, { credentials: "include" }).then(
-      handleResponse
+      handleResponse,
     ),
 
   createInstance: (data: unknown) =>
@@ -122,7 +122,7 @@ export const api = {
   // Config
   getConfig: (key: string) =>
     fetch(`${API_BASE}/config/${key}`, { credentials: "include" }).then(
-      handleResponse
+      handleResponse,
     ),
 
   setConfig: (key: string, value: string) =>
@@ -135,6 +135,21 @@ export const api = {
 
   getUIConfig: () =>
     fetch(`${API_BASE}/config/ui`, { credentials: "include" }).then(
-      handleResponse
+      handleResponse,
     ),
+
+  // Media mutations
+  updateMedia: (
+    mediaId: number,
+    data: {
+      override_require_original?: boolean | null;
+      override_notify?: boolean | null;
+    },
+  ) =>
+    fetch(`${API_BASE}/media/${mediaId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      credentials: "include",
+    }).then(handleResponse),
 };
