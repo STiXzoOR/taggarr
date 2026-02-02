@@ -69,13 +69,19 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
   </tr>
     <tr>
     <th colspan="1" align="center">Support for multiple instances</th>
-    <th colspan="1" align="center">UI</th>
+    <th colspan="1" align="center">Native Installation (uv)</th>
     <th colspan="1" align="center">Tag in genre</th>
   </tr>
   <tr>
     <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
-    <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-Not%20Ready-red?style=flat-square" /></td>
     <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
+    <th colspan="1" align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
+  </tr>
+  <tr>
+    <th colspan="3" align="center">UI</th>
+  </tr>
+  <tr>
+    <th colspan="3" align="center"><img src="https://img.shields.io/badge/Status-Not%20Ready-red?style=flat-square" /></td>
   </tr>
 </table>
 

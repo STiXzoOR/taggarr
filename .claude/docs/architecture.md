@@ -6,7 +6,7 @@
 taggarr/
 ├── __init__.py          # Entry point: run(), run_loop()
 ├── config_schema.py     # Dataclasses: Config, InstanceConfig, TagsConfig
-├── config_loader.py     # YAML loader with ${VAR} env interpolation
+├── config_loader.py     # YAML loader with ${VAR} env interpolation + XDG/APPDATA paths
 ├── logging_setup.py     # Logger configuration
 ├── nfo.py               # Kodi/Emby NFO file handling
 ├── languages.py         # Language code utilities and aliases
@@ -22,6 +22,15 @@ taggarr/
 └── storage/
     ├── __init__.py
     └── json_store.py    # taggarr.json persistence
+
+contrib/                     # Service templates for native installation
+├── systemd/
+│   ├── taggarr.user.service    # Linux user service
+│   └── taggarr.system.service  # Linux system service
+├── launchd/
+│   └── com.taggarr.plist       # macOS launchd agent
+└── nssm/
+    └── install.ps1             # Windows NSSM installer
 ```
 
 ## Data Flow
