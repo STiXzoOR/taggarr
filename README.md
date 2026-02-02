@@ -83,7 +83,7 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
     <th colspan="3" align="center">UI</th>
   </tr>
   <tr>
-    <th colspan="3" align="center"><img src="https://img.shields.io/badge/Status-Not%20Ready-red?style=flat-square" /></td>
+    <th colspan="3" align="center"><img src="https://img.shields.io/badge/Status-Ready-green?style=flat-square" /></td>
   </tr>
 </table>
 
@@ -380,5 +380,44 @@ cd $env:USERPROFILE\taggarr
 Check status: `nssm status taggarr`
 
 </details>
+
+<br>
+
+## Web UI
+
+Taggarr includes a web-based admin interface for managing instances, viewing media, and configuring settings.
+
+### Running the Web UI
+
+```bash
+# Start the server
+taggarr serve --port 8080
+
+# With custom database path
+taggarr serve --db /path/to/taggarr.db
+
+# For development with auto-reload
+taggarr serve --reload
+```
+
+### Docker
+
+```bash
+docker-compose up -d
+```
+
+Access the web UI at http://localhost:3000
+
+### First Run
+
+1. Navigate to http://localhost:3000
+2. Create your admin account on the setup page
+3. Add your Sonarr/Radarr instances in Settings > Instances
+4. Configure notification channels if desired
+5. Run a manual scan or wait for scheduled scans
+
+### API Documentation
+
+The API is available at http://localhost:8080/docs (Swagger UI) when the server is running.
 
 <br>
