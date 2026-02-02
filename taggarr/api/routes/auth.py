@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from taggarr.api.deps import get_current_user, get_db, get_optional_user
@@ -20,17 +20,17 @@ router = APIRouter(prefix="/api/v1", tags=["auth"])
 
 
 class LoginRequest(BaseModel):
-    """Request body for login endpoint."""
+    """Login request schema."""
 
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=1, max_length=1000)
 
 
 class InitializeRequest(BaseModel):
-    """Request body for initialize endpoint."""
+    """Initialize request schema."""
 
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=1000)
 
 
 class UserResponse(BaseModel):
