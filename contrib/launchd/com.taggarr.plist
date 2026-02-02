@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.taggarr</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/YOURUSER/taggarr</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/YOURUSER/.local/bin/uv</string>
+        <string>run</string>
+        <string>taggarr</string>
+        <string>--loop</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/YOURUSER/Library/Logs/taggarr.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOURUSER/Library/Logs/taggarr.error.log</string>
+</dict>
+</plist>
