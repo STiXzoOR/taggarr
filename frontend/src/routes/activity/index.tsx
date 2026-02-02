@@ -159,7 +159,7 @@ function ActivityPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Activity</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Activity</h1>
       </div>
 
       <Tabs defaultValue="history" className="space-y-4">
@@ -230,7 +230,7 @@ function ActivityPage() {
                   </Table>
 
                   {typedHistory.pages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-4 border-t">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t">
                       <div className="text-sm text-muted-foreground">
                         Page {historyPage} of {typedHistory.pages}
                       </div>
@@ -240,17 +240,21 @@ function ActivityPage() {
                           size="sm"
                           onClick={() => setHistoryPage((p) => p - 1)}
                           disabled={historyPage <= 1}
+                          className="min-h-[44px]"
                         >
                           <ChevronLeft className="h-4 w-4" />
-                          Previous
+                          <span className="hidden sm:inline ml-1">
+                            Previous
+                          </span>
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setHistoryPage((p) => p + 1)}
                           disabled={historyPage >= typedHistory.pages}
+                          className="min-h-[44px]"
                         >
-                          Next
+                          <span className="hidden sm:inline mr-1">Next</span>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>

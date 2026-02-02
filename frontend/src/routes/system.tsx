@@ -142,13 +142,14 @@ function SystemPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">System</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold">System</h1>
         <Button
           variant="outline"
           size="sm"
           onClick={() => refetch()}
           disabled={isRefetching}
+          className="w-fit"
         >
           <RefreshCw
             className={`mr-2 h-4 w-4 ${isRefetching ? "animate-spin" : ""}`}

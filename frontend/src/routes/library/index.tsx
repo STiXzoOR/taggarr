@@ -145,9 +145,9 @@ function LibraryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Library</h1>
-        <Button variant="outline" size="sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold">Library</h1>
+        <Button variant="outline" size="sm" className="w-fit">
           <RefreshCw className="mr-2 h-4 w-4" />
           Rescan All
         </Button>
@@ -273,8 +273,8 @@ function LibraryPage() {
 
               {/* Pagination */}
               {typedMedia.pages > 1 && (
-                <div className="flex items-center justify-between px-4 py-4 border-t">
-                  <div className="text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t">
+                  <div className="text-sm text-muted-foreground text-center sm:text-left">
                     Showing {(page - 1) * pageSize + 1} to{" "}
                     {Math.min(page * pageSize, typedMedia.total)} of{" "}
                     {typedMedia.total} results
@@ -285,20 +285,22 @@ function LibraryPage() {
                       size="sm"
                       onClick={() => handlePageChange(page - 1)}
                       disabled={page <= 1}
+                      className="min-h-[44px]"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      <span className="hidden sm:inline ml-1">Previous</span>
                     </Button>
-                    <span className="text-sm">
-                      Page {page} of {typedMedia.pages}
+                    <span className="text-sm px-2">
+                      {page} / {typedMedia.pages}
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handlePageChange(page + 1)}
                       disabled={page >= typedMedia.pages}
+                      className="min-h-[44px]"
                     >
-                      Next
+                      <span className="hidden sm:inline mr-1">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
