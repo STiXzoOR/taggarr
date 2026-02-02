@@ -37,6 +37,58 @@ export const Route = createRootRoute({
       {
         title: "Taggarr",
       },
+      {
+        name: "description",
+        content:
+          "Taggarr - Automatic audio language tagging for Sonarr and Radarr media libraries",
+      },
+      {
+        name: "theme-color",
+        content: "#0f172a",
+      },
+      // Open Graph tags for social sharing
+      {
+        property: "og:title",
+        content: "Taggarr",
+      },
+      {
+        property: "og:description",
+        content:
+          "Automatic audio language tagging for Sonarr and Radarr media libraries",
+      },
+      {
+        property: "og:type",
+        content: "website",
+      },
+      {
+        property: "og:image",
+        content: "/apple-touch-icon.svg",
+      },
+      // Twitter Card tags
+      {
+        name: "twitter:card",
+        content: "summary",
+      },
+      {
+        name: "twitter:title",
+        content: "Taggarr",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Automatic audio language tagging for Sonarr and Radarr media libraries",
+      },
+    ],
+    links: [
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "/favicon.svg",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/apple-touch-icon.svg",
+      },
     ],
   }),
   component: RootComponent,

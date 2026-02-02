@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <defs>
+    <linearGradient id="tagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="180" height="180" rx="20" fill="#0f172a"/>
+  <!-- Tag shape centered -->
+  <g transform="translate(30, 30)">
+    <path d="M10 10h60l50 50-60 60-50-50z" fill="url(#tagGrad)"/>
+    <!-- Tag hole -->
+    <circle cx="30" cy="30" r="8" fill="#1e1b4b"/>
+    <!-- T letter -->
+    <path d="M50 50h35v10h-12.5v35h-10v-35h-12.5z" fill="white"/>
+  </g>
+</svg>
