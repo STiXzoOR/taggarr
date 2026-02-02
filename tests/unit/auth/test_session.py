@@ -65,3 +65,28 @@ class TestIsSessionExpired:
         result = is_session_expired(past_iso)
 
         assert result is True
+
+    def test_is_session_expired_handles_naive_timestamp(self) -> None:
+        """is_session_expired handles naive (no timezone) ISO strings as UTC."""
+        # Create a naive timestamp (no timezone info) in the future
+        future = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+            hours=1
+        )
+        # Remove timezone info to create naive ISO string
+        naive_iso = future.replace(tzinfo=None).isoformat()
+
+        result = is_session_expired(naive_iso)
+
+        assert result is False
+
+    def test_get_session_expiry_with_custom_hours(self) -> None:
+        """get_session_expiry accepts custom hour values."""
+        now = datetime.datetime.now(datetime.timezone.utc)
+
+        expiry_48h = get_session_expiry(hours=48)
+        expiry_dt = datetime.datetime.fromisoformat(expiry_48h)
+
+        # Should be approximately 48 hours from now (with some tolerance)
+        expected = now + datetime.timedelta(hours=48)
+        diff = abs((expiry_dt - expected).total_seconds())
+        assert diff < 2  # Within 2 seconds tolerance

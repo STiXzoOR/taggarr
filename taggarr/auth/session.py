@@ -38,5 +38,7 @@ def is_session_expired(expires_at: str) -> bool:
         True if the timestamp is in the past, False otherwise.
     """
     expiry_dt = datetime.datetime.fromisoformat(expires_at)
+    if expiry_dt.tzinfo is None:
+        expiry_dt = expiry_dt.replace(tzinfo=datetime.timezone.utc)
     now = datetime.datetime.now(datetime.timezone.utc)
     return expiry_dt <= now
