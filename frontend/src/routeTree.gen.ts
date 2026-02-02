@@ -12,6 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as LibraryIndexRouteImport } from './routes/library/index'
+import { Route as ActivityIndexRouteImport } from './routes/activity/index'
+import { Route as SettingsSecurityRouteImport } from './routes/settings/security'
+import { Route as SettingsNotificationsRouteImport } from './routes/settings/notifications'
+import { Route as SettingsInstancesRouteImport } from './routes/settings/instances'
+import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
+import { Route as SettingsBackupRouteImport } from './routes/settings/backup'
+import { Route as LibraryMediaIdRouteImport } from './routes/library/$mediaId'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -28,35 +37,153 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryIndexRoute = LibraryIndexRouteImport.update({
+  id: '/library/',
+  path: '/library/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityIndexRoute = ActivityIndexRouteImport.update({
+  id: '/activity/',
+  path: '/activity/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
+  id: '/settings/security',
+  path: '/settings/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/settings/notifications',
+  path: '/settings/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsInstancesRoute = SettingsInstancesRouteImport.update({
+  id: '/settings/instances',
+  path: '/settings/instances',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
+  id: '/settings/general',
+  path: '/settings/general',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsBackupRoute = SettingsBackupRouteImport.update({
+  id: '/settings/backup',
+  path: '/settings/backup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryMediaIdRoute = LibraryMediaIdRouteImport.update({
+  id: '/library/$mediaId',
+  path: '/library/$mediaId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/library/$mediaId': typeof LibraryMediaIdRoute
+  '/settings/backup': typeof SettingsBackupRoute
+  '/settings/general': typeof SettingsGeneralRoute
+  '/settings/instances': typeof SettingsInstancesRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/activity/': typeof ActivityIndexRoute
+  '/library/': typeof LibraryIndexRoute
+  '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/library/$mediaId': typeof LibraryMediaIdRoute
+  '/settings/backup': typeof SettingsBackupRoute
+  '/settings/general': typeof SettingsGeneralRoute
+  '/settings/instances': typeof SettingsInstancesRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/activity': typeof ActivityIndexRoute
+  '/library': typeof LibraryIndexRoute
+  '/settings': typeof SettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/library/$mediaId': typeof LibraryMediaIdRoute
+  '/settings/backup': typeof SettingsBackupRoute
+  '/settings/general': typeof SettingsGeneralRoute
+  '/settings/instances': typeof SettingsInstancesRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/security': typeof SettingsSecurityRoute
+  '/activity/': typeof ActivityIndexRoute
+  '/library/': typeof LibraryIndexRoute
+  '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/setup'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/library/$mediaId'
+    | '/settings/backup'
+    | '/settings/general'
+    | '/settings/instances'
+    | '/settings/notifications'
+    | '/settings/security'
+    | '/activity/'
+    | '/library/'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/setup'
-  id: '__root__' | '/' | '/login' | '/setup'
+  to:
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/library/$mediaId'
+    | '/settings/backup'
+    | '/settings/general'
+    | '/settings/instances'
+    | '/settings/notifications'
+    | '/settings/security'
+    | '/activity'
+    | '/library'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/library/$mediaId'
+    | '/settings/backup'
+    | '/settings/general'
+    | '/settings/instances'
+    | '/settings/notifications'
+    | '/settings/security'
+    | '/activity/'
+    | '/library/'
+    | '/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   SetupRoute: typeof SetupRoute
+  LibraryMediaIdRoute: typeof LibraryMediaIdRoute
+  SettingsBackupRoute: typeof SettingsBackupRoute
+  SettingsGeneralRoute: typeof SettingsGeneralRoute
+  SettingsInstancesRoute: typeof SettingsInstancesRoute
+  SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsSecurityRoute: typeof SettingsSecurityRoute
+  ActivityIndexRoute: typeof ActivityIndexRoute
+  LibraryIndexRoute: typeof LibraryIndexRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +209,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library/': {
+      id: '/library/'
+      path: '/library'
+      fullPath: '/library/'
+      preLoaderRoute: typeof LibraryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity/': {
+      id: '/activity/'
+      path: '/activity'
+      fullPath: '/activity/'
+      preLoaderRoute: typeof ActivityIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/security': {
+      id: '/settings/security'
+      path: '/settings/security'
+      fullPath: '/settings/security'
+      preLoaderRoute: typeof SettingsSecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/settings/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/instances': {
+      id: '/settings/instances'
+      path: '/settings/instances'
+      fullPath: '/settings/instances'
+      preLoaderRoute: typeof SettingsInstancesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/general': {
+      id: '/settings/general'
+      path: '/settings/general'
+      fullPath: '/settings/general'
+      preLoaderRoute: typeof SettingsGeneralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/backup': {
+      id: '/settings/backup'
+      path: '/settings/backup'
+      fullPath: '/settings/backup'
+      preLoaderRoute: typeof SettingsBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library/$mediaId': {
+      id: '/library/$mediaId'
+      path: '/library/$mediaId'
+      fullPath: '/library/$mediaId'
+      preLoaderRoute: typeof LibraryMediaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +279,15 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   SetupRoute: SetupRoute,
+  LibraryMediaIdRoute: LibraryMediaIdRoute,
+  SettingsBackupRoute: SettingsBackupRoute,
+  SettingsGeneralRoute: SettingsGeneralRoute,
+  SettingsInstancesRoute: SettingsInstancesRoute,
+  SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsSecurityRoute: SettingsSecurityRoute,
+  ActivityIndexRoute: ActivityIndexRoute,
+  LibraryIndexRoute: LibraryIndexRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
