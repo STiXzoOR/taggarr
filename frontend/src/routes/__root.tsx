@@ -4,11 +4,13 @@ import {
   createRootRoute,
   HeadContent,
   Scripts,
+  useLocation,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { AuthProvider } from "~/lib/auth";
 import { ProtectedRoute } from "~/components/protected-route";
+import { MainLayout } from "~/components/layout";
 import "~/styles.css";
 
 const queryClient = new QueryClient({
@@ -38,17 +40,34 @@ export const Route = createRootRoute({
   component: RootComponent,
 });
 
+const PUBLIC_ROUTES = ["/login", "/setup"];
+
 function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ProtectedRoute>
           <RootDocument>
-            <Outlet />
+            <LayoutWrapper />
           </RootDocument>
         </ProtectedRoute>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function LayoutWrapper() {
+  const location = useLocation();
+  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
+
+  if (isPublicRoute) {
+    return <Outlet />;
+  }
+
+  return (
+    <MainLayout>
+      <Outlet />
+    </MainLayout>
   );
 }
 
