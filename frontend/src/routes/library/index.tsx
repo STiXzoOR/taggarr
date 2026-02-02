@@ -26,10 +26,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Film,
-  Tv,
   RefreshCw,
+  Library,
 } from "lucide-react";
 import { TableSkeleton } from "~/components/ui/skeleton";
+import { EmptyState } from "~/components/ui/empty-state";
 
 interface SearchParams {
   page?: number;
@@ -215,9 +216,30 @@ function LibraryPage() {
           {mediaLoading ? (
             <TableSkeleton columns={5} rows={10} />
           ) : !typedMedia?.items || typedMedia.items.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              No media found
-            </div>
+            <EmptyState
+              icon={Library}
+              title={
+                search.search || search.instance_id || search.tag_id
+                  ? "No results found"
+                  : "Your library is empty"
+              }
+              description={
+                search.search || search.instance_id || search.tag_id
+                  ? "Try adjusting your filters or search terms to find what you're looking for."
+                  : "Connect a Sonarr or Radarr instance and run a scan to populate your media library."
+              }
+              action={
+                search.search || search.instance_id || search.tag_id
+                  ? {
+                      label: "Clear Filters",
+                      onClick: () => navigate({ search: { page: 1 } }),
+                    }
+                  : {
+                      label: "Add Instance",
+                      href: "/settings/instances",
+                    }
+              }
+            />
           ) : (
             <>
               <Table>

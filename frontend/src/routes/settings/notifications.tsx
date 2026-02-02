@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { SettingsSidebar } from "./general";
 import { TableSkeleton } from "~/components/ui/skeleton";
+import { EmptyState } from "~/components/ui/empty-state";
 
 export const Route = createFileRoute("/settings/notifications")({
   component: NotificationsSettingsPage,
@@ -423,13 +424,15 @@ function NotificationsSettingsPage() {
               {isLoading ? (
                 <TableSkeleton columns={5} rows={3} />
               ) : !typedChannels || typedChannels.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No notification channels configured</p>
-                  <p className="text-sm mt-1">
-                    Add a channel to receive notifications
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Bell}
+                  title="No notification channels"
+                  description="Set up webhooks, Discord, Slack, or email notifications to stay informed about tag changes and scan results."
+                  action={{
+                    label: "Add Channel",
+                    onClick: () => setIsCreateOpen(true),
+                  }}
+                />
               ) : (
                 <Table>
                   <TableHeader>

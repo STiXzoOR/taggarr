@@ -36,17 +36,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  Database,
-  Download,
-  Upload,
-  Trash2,
-  RefreshCw,
-  Save,
-  Clock,
-} from "lucide-react";
+import { Database, Download, Upload, Trash2, Save, Clock } from "lucide-react";
 import { SettingsSidebar } from "./general";
 import { TableSkeleton } from "~/components/ui/skeleton";
+import { EmptyState } from "~/components/ui/empty-state";
 
 export const Route = createFileRoute("/settings/backup")({
   component: BackupSettingsPage,
@@ -308,13 +301,15 @@ function BackupSettingsPage() {
               {backupsLoading ? (
                 <TableSkeleton columns={5} rows={3} />
               ) : !typedBackups || typedBackups.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No backups yet</p>
-                  <p className="text-sm mt-1">
-                    Create your first backup to protect your data
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Database}
+                  title="No backups yet"
+                  description="Create your first backup to protect your configuration and media data. Enable automatic backups for peace of mind."
+                  action={{
+                    label: "Create Backup",
+                    onClick: handleCreateBackup,
+                  }}
+                />
               ) : (
                 <Table>
                   <TableHeader>

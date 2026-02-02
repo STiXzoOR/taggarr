@@ -31,6 +31,7 @@ import {
 import { useState } from "react";
 import { useLogStream } from "~/hooks/useLogStream";
 import { TableSkeleton } from "~/components/ui/skeleton";
+import { EmptyState } from "~/components/ui/empty-state";
 
 export const Route = createFileRoute("/activity/")({
   component: ActivityPage,
@@ -193,9 +194,12 @@ function ActivityPage() {
               {historyLoading ? (
                 <TableSkeleton columns={6} rows={8} />
               ) : !typedHistory?.items || typedHistory.items.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  No history yet
-                </div>
+                <EmptyState
+                  icon={History}
+                  title="No activity yet"
+                  description="Your scan and tagging history will appear here once you start processing your media library."
+                  variant="compact"
+                />
               ) : (
                 <>
                   <Table>
@@ -284,13 +288,12 @@ function ActivityPage() {
               {queueLoading ? (
                 <TableSkeleton columns={6} rows={5} />
               ) : !typedQueue || typedQueue.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Queue is empty</p>
-                  <p className="text-sm mt-1">
-                    Commands will appear here when scanning or tagging media
-                  </p>
-                </div>
+                <EmptyState
+                  icon={ListTodo}
+                  title="Queue is empty"
+                  description="When you scan or tag media, pending commands will appear here. The queue processes tasks in priority order."
+                  variant="compact"
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -358,15 +361,16 @@ function ActivityPage() {
             </CardHeader>
             <CardContent className="p-0">
               {streamedLogs.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No logs available</p>
-                  <p className="text-sm mt-1">
-                    {isConnected
-                      ? "Application logs will appear here in real-time"
-                      : "Reconnecting to log stream..."}
-                  </p>
-                </div>
+                <EmptyState
+                  icon={FileText}
+                  title="No logs yet"
+                  description={
+                    isConnected
+                      ? "Waiting for activity... Logs will stream here in real-time as events occur."
+                      : "Reconnecting to log stream... Please wait."
+                  }
+                  variant="compact"
+                />
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
                   <Table>

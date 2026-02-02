@@ -18,8 +18,10 @@ import {
   AlertCircle,
   Clock,
   ArrowRight,
+  ScanLine,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { EmptyState } from "~/components/ui/empty-state";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -219,14 +221,16 @@ function Dashboard() {
             {instancesLoading ? (
               <InstanceListSkeleton count={3} />
             ) : !typedInstances || typedInstances.length === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground mb-4">
-                  No instances configured
-                </p>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/settings/instances">Add Instance</Link>
-                </Button>
-              </div>
+              <EmptyState
+                icon={Server}
+                title="No instances"
+                description="Connect Sonarr or Radarr to get started"
+                action={{
+                  label: "Add Instance",
+                  href: "/settings/instances",
+                }}
+                variant="compact"
+              />
             ) : (
               <div className="space-y-3">
                 {typedInstances.slice(0, 5).map((instance: Instance) => (
@@ -273,9 +277,12 @@ function Dashboard() {
           {mediaLoading ? (
             <MediaListSkeleton count={5} />
           ) : !typedMedia?.items || typedMedia.items.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground">No media scanned yet</p>
-            </div>
+            <EmptyState
+              icon={ScanLine}
+              title="No media scanned"
+              description="Run a scan to see your media here"
+              variant="compact"
+            />
           ) : (
             <div className="space-y-3">
               {typedMedia.items.map((item: MediaItem) => (

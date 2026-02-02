@@ -42,9 +42,10 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { Plus, Pencil, Trash2, Server, Tv, Film, TestTube } from "lucide-react";
+import { Plus, Pencil, Trash2, Server, Tv, Film } from "lucide-react";
 import { SettingsSidebar } from "./general";
 import { TableSkeleton } from "~/components/ui/skeleton";
+import { EmptyState } from "~/components/ui/empty-state";
 
 export const Route = createFileRoute("/settings/instances")({
   component: InstancesSettingsPage,
@@ -298,13 +299,15 @@ function InstancesSettingsPage() {
               {isLoading ? (
                 <TableSkeleton columns={6} rows={3} />
               ) : !typedInstances || typedInstances.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No instances configured</p>
-                  <p className="text-sm mt-1">
-                    Add a Sonarr or Radarr instance to get started
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Server}
+                  title="No instances connected"
+                  description="Connect your first Sonarr or Radarr instance to start scanning and tagging your media library."
+                  action={{
+                    label: "Add Instance",
+                    onClick: () => setIsCreateOpen(true),
+                  }}
+                />
               ) : (
                 <Table>
                   <TableHeader>

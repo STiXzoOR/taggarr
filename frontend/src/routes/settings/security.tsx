@@ -31,7 +31,6 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import {
-  Shield,
   Key,
   Plus,
   Copy,
@@ -43,6 +42,7 @@ import {
 } from "lucide-react";
 import { SettingsSidebar } from "./general";
 import { TableSkeleton } from "~/components/ui/skeleton";
+import { EmptyState } from "~/components/ui/empty-state";
 
 export const Route = createFileRoute("/settings/security")({
   component: SecuritySettingsPage,
@@ -396,13 +396,15 @@ function SecuritySettingsPage() {
               {keysLoading ? (
                 <TableSkeleton columns={5} rows={3} />
               ) : !typedApiKeys || typedApiKeys.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No API keys</p>
-                  <p className="text-sm mt-1">
-                    Create an API key for external integrations
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Key}
+                  title="No API keys"
+                  description="Generate API keys to integrate Taggarr with external tools, automation scripts, or third-party applications."
+                  action={{
+                    label: "Create Key",
+                    onClick: () => setIsCreateKeyOpen(true),
+                  }}
+                />
               ) : (
                 <Table>
                   <TableHeader>
