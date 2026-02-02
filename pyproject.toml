@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "taggarr"
-version = "0.7.0"
+dynamic = ["version"]
 description = "Dub Analysis & Tagging for Sonarr/Radarr"
 requires-python = ">=3.9"
 dependencies = [
@@ -41,6 +41,9 @@ exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.:",
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "taggarr.__version__"}
 
 [tool.setuptools]
 packages = ["taggarr"]

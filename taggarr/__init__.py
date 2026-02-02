@@ -5,7 +5,7 @@ Fork of https://github.com/BassHous3/taggarr
 
 __description__ = "Dub Analysis & Tagging."
 __author__ = "STiXzoOR (fork), BassHous3 (original)"
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 import os
 import time
