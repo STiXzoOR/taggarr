@@ -2,6 +2,7 @@
 
 from taggarr.api.routes.apikeys import router as apikeys_router
 from taggarr.api.routes.auth import router as auth_router
+from taggarr.api.routes.backups import router as backups_router
 from taggarr.api.routes.commands import router as commands_router
 from taggarr.api.routes.config import router as config_router
 from taggarr.api.routes.history import router as history_router
@@ -13,6 +14,7 @@ from taggarr.api.routes.tags import router as tags_router
 __all__ = [
     "auth_router",
     "apikeys_router",
+    "backups_router",
     "commands_router",
     "config_router",
     "history_router",
