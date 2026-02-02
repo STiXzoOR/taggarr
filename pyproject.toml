@@ -12,6 +12,7 @@ dependencies = [
     "pymediainfo>=7.0",
     "pycountry>=24.6",
     "PyYAML>=6.0",
+    "SQLAlchemy>=2.0",
 ]
 
 [project.scripts]
@@ -45,8 +46,9 @@ exclude_lines = [
 [tool.setuptools.dynamic]
 version = {attr = "taggarr.__version__"}
 
-[tool.setuptools]
-packages = ["taggarr"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["taggarr*"]
 
 [tool.setuptools.package-dir]
 "" = "."
