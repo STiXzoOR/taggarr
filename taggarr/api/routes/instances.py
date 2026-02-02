@@ -312,7 +312,7 @@ async def update_instance(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Instance with name '{request.name}' already exists",
+            detail="Instance name already exists",
         )
 
     return instance_to_response(instance)
