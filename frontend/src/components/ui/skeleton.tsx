@@ -1,7 +1,7 @@
 import { cn } from "~/lib/utils";
 
 /**
- * Base skeleton component with pulsing animation
+ * Base skeleton component with smooth pulsing animation
  */
 function Skeleton({
   className,
@@ -9,7 +9,38 @@ function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      className={cn(
+        "rounded-md bg-muted animate-pulse [animation-duration:1.5s]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+/**
+ * Loading spinner component with smooth rotation
+ */
+function LoadingSpinner({
+  className,
+  size = "md",
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & {
+  size?: "sm" | "md" | "lg";
+}) {
+  const sizeClasses = {
+    sm: "h-4 w-4 border-2",
+    md: "h-8 w-8 border-2",
+    lg: "h-12 w-12 border-3",
+  };
+
+  return (
+    <div
+      className={cn(
+        "rounded-full border-muted border-t-primary animate-spin [animation-duration:0.8s]",
+        sizeClasses[size],
+        className,
+      )}
       {...props}
     />
   );
@@ -187,6 +218,7 @@ function SystemCardsSkeleton() {
 
 export {
   Skeleton,
+  LoadingSpinner,
   StatCardSkeleton,
   StatsGridSkeleton,
   TableRowSkeleton,
