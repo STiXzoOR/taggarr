@@ -195,3 +195,74 @@ instances:
         monkeypatch.chdir(tmp_path)
         config = load_config()
         assert "test" in config.instances
+
+
+class TestGetConfigPaths:
+    """Tests for config path resolution."""
+
+    def test_xdg_config_home_takes_priority(self, tmp_path, monkeypatch):
+        """XDG_CONFIG_HOME should be checked before ~/.config."""
+        xdg_dir = tmp_path / "xdg"
+        xdg_dir.mkdir()
+        config_file = xdg_dir / "taggarr" / "config.yaml"
+        config_file.parent.mkdir()
+        config_file.write_text("""
+instances:
+  test:
+    type: sonarr
+    url: http://xdg-host
+    api_key: key
+    root_path: /media
+""")
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg_dir))
+        monkeypatch.chdir(tmp_path)  # No local taggarr.yaml
+
+        config = load_config()
+        assert config.instances["test"].url == "http://xdg-host"
+
+    def test_falls_back_to_home_config_when_no_xdg(self, tmp_path, monkeypatch):
+        """Should use ~/.config when XDG_CONFIG_HOME is not set."""
+        # Unset XDG_CONFIG_HOME if present
+        monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+
+        # Create config in fake home
+        fake_home = tmp_path / "home"
+        config_dir = fake_home / ".config" / "taggarr"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "config.yaml"
+        config_file.write_text("""
+instances:
+  test:
+    type: sonarr
+    url: http://home-config
+    api_key: key
+    root_path: /media
+""")
+        monkeypatch.setenv("HOME", str(fake_home))
+        monkeypatch.chdir(tmp_path)  # No local taggarr.yaml
+
+        config = load_config()
+        assert config.instances["test"].url == "http://home-config"
+
+    def test_appdata_on_windows(self, tmp_path, monkeypatch):
+        """Should use APPDATA on Windows."""
+        # Mock Windows platform
+        monkeypatch.setattr("sys.platform", "win32")
+
+        appdata_dir = tmp_path / "AppData" / "Roaming"
+        config_dir = appdata_dir / "taggarr"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "config.yaml"
+        config_file.write_text("""
+instances:
+  test:
+    type: sonarr
+    url: http://appdata-host
+    api_key: key
+    root_path: /media
+""")
+        monkeypatch.setenv("APPDATA", str(appdata_dir))
+        monkeypatch.chdir(tmp_path)  # No local taggarr.yaml
+
+        config = load_config()
+        assert config.instances["test"].url == "http://appdata-host"

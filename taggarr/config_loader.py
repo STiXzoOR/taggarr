@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 import yaml
 from pathlib import Path
 from typing import Optional
@@ -16,20 +17,37 @@ class ConfigError(Exception):
     pass
 
 
+def _get_config_search_paths() -> list:
+    """Get platform-specific config search paths."""
+    paths = [Path("./taggarr.yaml")]
+
+    if sys.platform == "win32":
+        # Windows: use APPDATA
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            paths.append(Path(appdata) / "taggarr" / "config.yaml")
+    else:
+        # Linux/macOS: XDG_CONFIG_HOME or ~/.config, then /etc
+        xdg_config = os.environ.get("XDG_CONFIG_HOME")
+        if xdg_config:
+            paths.append(Path(xdg_config) / "taggarr" / "config.yaml")
+        paths.append(Path.home() / ".config" / "taggarr" / "config.yaml")
+        paths.append(Path("/etc/taggarr/config.yaml"))
+
+    return paths
+
+
 def load_config(cli_path: "Optional[str]" = None) -> Config:
     """Load configuration from YAML file.
 
     Search order:
     1. CLI-specified path
     2. ./taggarr.yaml
-    3. ~/.config/taggarr/config.yaml
-    4. /etc/taggarr/config.yaml
+    3. Platform-specific config locations:
+       - Linux/macOS: XDG_CONFIG_HOME/taggarr/config.yaml, ~/.config/taggarr/config.yaml, /etc/taggarr/config.yaml
+       - Windows: APPDATA/taggarr/config.yaml
     """
-    search_paths = [
-        Path("./taggarr.yaml"),
-        Path.home() / ".config" / "taggarr" / "config.yaml",
-        Path("/etc/taggarr/config.yaml"),
-    ]
+    search_paths = _get_config_search_paths()
 
     if cli_path:
         config_path = Path(cli_path)
