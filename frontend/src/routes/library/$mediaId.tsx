@@ -46,6 +46,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "~/lib/toast";
 
 export const Route = createFileRoute("/library/$mediaId")({
   component: MediaDetailPage,
@@ -115,11 +116,16 @@ function MediaDetailPage() {
     setOverrideOpen(open);
   };
 
-  const handleSaveOverrides = () => {
-    updateMediaMutation.mutate({
-      override_require_original: overrideRequireOriginal,
-      override_notify: overrideNotify,
-    });
+  const handleSaveOverrides = async () => {
+    try {
+      await updateMediaMutation.mutateAsync({
+        override_require_original: overrideRequireOriginal,
+        override_notify: overrideNotify,
+      });
+      toast.success("Override settings saved");
+    } catch {
+      toast.error("Failed to save settings");
+    }
   };
 
   const getTagBadgeClass = (tagLabel?: string) => {
