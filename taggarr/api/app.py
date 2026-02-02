@@ -3,6 +3,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from taggarr.api.routes import auth_router
+
 
 def create_app(base_url: str = "/") -> FastAPI:
     """Create and configure FastAPI application.
@@ -37,5 +39,8 @@ def create_app(base_url: str = "/") -> FastAPI:
     async def root() -> dict[str, str]:
         """Root endpoint."""
         return {"message": "Taggarr API"}
+
+    # Include routers
+    app.include_router(auth_router)
 
     return app
