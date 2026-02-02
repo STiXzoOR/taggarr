@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "~/lib/toast";
 import {
   Card,
   CardContent,
@@ -121,9 +122,14 @@ function SecuritySettingsPage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const handleCreateKey = async () => {
-    const result = await createApiKey.mutateAsync(newKeyName);
-    setCreatedKey(result.key);
-    setNewKeyName("");
+    try {
+      const result = await createApiKey.mutateAsync(newKeyName);
+      setCreatedKey(result.key);
+      setNewKeyName("");
+      toast.success("API key created");
+    } catch {
+      toast.error("Failed to create API key");
+    }
   };
 
   const handleCloseKeyDialog = () => {
@@ -142,8 +148,13 @@ function SecuritySettingsPage() {
 
   const handleDeleteKey = async () => {
     if (!deleteConfirm) return;
-    await deleteApiKey.mutateAsync(deleteConfirm.id);
-    setDeleteConfirm(null);
+    try {
+      await deleteApiKey.mutateAsync(deleteConfirm.id);
+      toast.success("API key deleted");
+      setDeleteConfirm(null);
+    } catch {
+      toast.error("Failed to delete API key");
+    }
   };
 
   const handleChangePassword = async () => {
@@ -152,11 +163,13 @@ function SecuritySettingsPage() {
 
     if (passwordForm.new_password !== passwordForm.confirm_password) {
       setPasswordError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
     if (passwordForm.new_password.length < 8) {
       setPasswordError("Password must be at least 8 characters");
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
@@ -171,10 +184,12 @@ function SecuritySettingsPage() {
         new_password: "",
         confirm_password: "",
       });
+      toast.success("Password changed successfully");
     } catch {
       setPasswordError(
         "Failed to change password. Check your current password.",
       );
+      toast.error("Failed to change password");
     }
   };
 

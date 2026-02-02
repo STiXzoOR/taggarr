@@ -6,6 +6,7 @@ import { Label } from "~/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { useLogin } from "~/lib/queries";
 import { useAuth } from "~/lib/auth";
+import { toast } from "~/lib/toast";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -30,9 +31,11 @@ function LoginPage() {
     setError("");
     try {
       await login.mutateAsync({ username, password });
+      toast.success("Welcome back!");
       navigate({ to: "/" });
     } catch {
       setError("Invalid username or password");
+      toast.error("Invalid username or password");
     }
   };
 

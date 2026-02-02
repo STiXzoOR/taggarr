@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "~/lib/toast";
 import {
   Card,
   CardContent,
@@ -152,22 +153,49 @@ function NotificationsSettingsPage() {
   const typedChannels = channels as NotificationChannel[] | undefined;
 
   const handleCreate = async () => {
-    await createChannel.mutateAsync(formData);
-    setIsCreateOpen(false);
-    setFormData(defaultFormData);
+    try {
+      await createChannel.mutateAsync(formData);
+      toast.success("Channel created");
+      setIsCreateOpen(false);
+      setFormData(defaultFormData);
+    } catch {
+      toast.error("Failed to create channel");
+    }
   };
 
   const handleUpdate = async () => {
     if (!editingChannel) return;
-    await updateChannel.mutateAsync({ id: editingChannel.id, data: formData });
-    setEditingChannel(null);
-    setFormData(defaultFormData);
+    try {
+      await updateChannel.mutateAsync({
+        id: editingChannel.id,
+        data: formData,
+      });
+      toast.success("Channel updated");
+      setEditingChannel(null);
+      setFormData(defaultFormData);
+    } catch {
+      toast.error("Failed to update channel");
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await deleteChannel.mutateAsync(deleteConfirm.id);
-    setDeleteConfirm(null);
+    try {
+      await deleteChannel.mutateAsync(deleteConfirm.id);
+      toast.success("Channel deleted");
+      setDeleteConfirm(null);
+    } catch {
+      toast.error("Failed to delete channel");
+    }
+  };
+
+  const handleTest = async (channel: NotificationChannel) => {
+    try {
+      await testChannel.mutateAsync(channel.id);
+      toast.success("Test notification sent");
+    } catch {
+      toast.error("Failed to send test notification");
+    }
   };
 
   const openEdit = (channel: NotificationChannel) => {
@@ -439,7 +467,7 @@ function NotificationsSettingsPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              onClick={() => testChannel.mutate(channel.id)}
+                              onClick={() => handleTest(channel)}
                               disabled={testChannel.isPending}
                             >
                               <TestTube className="h-4 w-4" />

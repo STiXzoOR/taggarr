@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 import { AuthProvider } from "~/lib/auth";
 import { ProtectedRoute } from "~/components/protected-route";
@@ -79,6 +80,17 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body className="dark">
         {children}
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "hsl(222.2 84% 4.9%)",
+              border: "1px solid hsl(217.2 32.6% 17.5%)",
+              color: "hsl(210 40% 98%)",
+            },
+          }}
+        />
         <Scripts />
       </body>
     </html>

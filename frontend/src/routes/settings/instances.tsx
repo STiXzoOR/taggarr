@@ -6,6 +6,7 @@ import {
   useUpdateInstance,
   useDeleteInstance,
 } from "~/lib/queries";
+import { toast } from "~/lib/toast";
 import {
   Card,
   CardContent,
@@ -90,35 +91,50 @@ function InstancesSettingsPage() {
   const typedInstances = instances as Instance[] | undefined;
 
   const handleCreate = async () => {
-    await createInstance.mutateAsync({
-      ...formData,
-      target_languages: formData.target_languages
-        ? formData.target_languages.split(",").map((l) => l.trim())
-        : [],
-    });
-    setIsCreateOpen(false);
-    setFormData(defaultFormData);
-  };
-
-  const handleUpdate = async () => {
-    if (!editingInstance) return;
-    await updateInstance.mutateAsync({
-      id: editingInstance.id,
-      data: {
+    try {
+      await createInstance.mutateAsync({
         ...formData,
         target_languages: formData.target_languages
           ? formData.target_languages.split(",").map((l) => l.trim())
           : [],
-      },
-    });
-    setEditingInstance(null);
-    setFormData(defaultFormData);
+      });
+      toast.success("Instance created");
+      setIsCreateOpen(false);
+      setFormData(defaultFormData);
+    } catch {
+      toast.error("Failed to create instance");
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingInstance) return;
+    try {
+      await updateInstance.mutateAsync({
+        id: editingInstance.id,
+        data: {
+          ...formData,
+          target_languages: formData.target_languages
+            ? formData.target_languages.split(",").map((l) => l.trim())
+            : [],
+        },
+      });
+      toast.success("Instance updated");
+      setEditingInstance(null);
+      setFormData(defaultFormData);
+    } catch {
+      toast.error("Failed to update instance");
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await deleteInstance.mutateAsync(deleteConfirm.id);
-    setDeleteConfirm(null);
+    try {
+      await deleteInstance.mutateAsync(deleteConfirm.id);
+      toast.success("Instance deleted");
+      setDeleteConfirm(null);
+    } catch {
+      toast.error("Failed to delete instance");
+    }
   };
 
   const openEdit = (instance: Instance) => {

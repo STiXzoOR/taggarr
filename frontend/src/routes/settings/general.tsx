@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useState } from "react";
 import { useConfig, useSetConfig } from "~/lib/queries";
+import { toast } from "~/lib/toast";
 import {
   Card,
   CardContent,
@@ -89,27 +90,35 @@ function GeneralSettingsPage() {
   };
 
   const handleSave = async () => {
-    const updates = [];
-    if (formData.scan_interval) {
-      updates.push(
-        setConfig.mutateAsync({
-          key: "scan_interval",
-          value: formData.scan_interval,
-        }),
-      );
+    try {
+      const updates = [];
+      if (formData.scan_interval) {
+        updates.push(
+          setConfig.mutateAsync({
+            key: "scan_interval",
+            value: formData.scan_interval,
+          }),
+        );
+      }
+      if (formData.log_level) {
+        updates.push(
+          setConfig.mutateAsync({
+            key: "log_level",
+            value: formData.log_level,
+          }),
+        );
+      }
+      if (formData.timezone) {
+        updates.push(
+          setConfig.mutateAsync({ key: "timezone", value: formData.timezone }),
+        );
+      }
+      await Promise.all(updates);
+      setHasChanges(false);
+      toast.success("Settings saved");
+    } catch {
+      toast.error("Failed to save settings");
     }
-    if (formData.log_level) {
-      updates.push(
-        setConfig.mutateAsync({ key: "log_level", value: formData.log_level }),
-      );
-    }
-    if (formData.timezone) {
-      updates.push(
-        setConfig.mutateAsync({ key: "timezone", value: formData.timezone }),
-      );
-    }
-    await Promise.all(updates);
-    setHasChanges(false);
   };
 
   return (

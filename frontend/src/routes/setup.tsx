@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/card";
 import { useInitialize } from "~/lib/queries";
 import { useAuth } from "~/lib/auth";
+import { toast } from "~/lib/toast";
 
 export const Route = createFileRoute("/setup")({
   component: SetupPage,
@@ -48,9 +49,11 @@ function SetupPage() {
 
     try {
       await initialize.mutateAsync({ username, password });
+      toast.success("Account created successfully!");
       navigate({ to: "/" });
     } catch {
       setError("Failed to initialize. Please try again.");
+      toast.error("Failed to create account");
     }
   };
 

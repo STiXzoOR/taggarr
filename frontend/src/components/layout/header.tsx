@@ -3,6 +3,7 @@ import { useLogout } from "~/lib/queries";
 import { Button } from "~/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 import { LogOut, User } from "lucide-react";
+import { toast } from "~/lib/toast";
 
 export function Header() {
   const { user } = useAuth();
@@ -10,8 +11,13 @@ export function Header() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout.mutateAsync();
-    navigate({ to: "/login" });
+    try {
+      await logout.mutateAsync();
+      toast.success("Logged out successfully");
+      navigate({ to: "/login" });
+    } catch {
+      toast.error("Failed to log out");
+    }
   };
 
   return (

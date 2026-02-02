@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "~/lib/toast";
 import {
   Card,
   CardContent,
@@ -151,21 +152,45 @@ function BackupSettingsPage() {
   };
 
   const handleSave = async () => {
-    await updateSettings.mutateAsync(formData);
-    setHasChanges(false);
-    setFormData({});
+    try {
+      await updateSettings.mutateAsync(formData);
+      toast.success("Settings saved");
+      setHasChanges(false);
+      setFormData({});
+    } catch {
+      toast.error("Failed to save settings");
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    await deleteBackup.mutateAsync(deleteConfirm.id);
-    setDeleteConfirm(null);
+    try {
+      await deleteBackup.mutateAsync(deleteConfirm.id);
+      toast.success("Backup deleted");
+      setDeleteConfirm(null);
+    } catch {
+      toast.error("Failed to delete backup");
+    }
   };
 
   const handleRestore = async () => {
     if (!restoreConfirm) return;
-    await restoreBackup.mutateAsync(restoreConfirm.id);
-    setRestoreConfirm(null);
+    try {
+      await restoreBackup.mutateAsync(restoreConfirm.id);
+      toast.success("Backup restored successfully");
+      setRestoreConfirm(null);
+    } catch {
+      toast.error("Failed to restore backup");
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    try {
+      await createBackup.mutateAsync();
+      toast.success("Backup created");
+    } catch {
+      toast.error("Failed to create backup");
+    }
   };
 
   const formatBytes = (bytes: number) => {
@@ -264,7 +289,7 @@ function BackupSettingsPage() {
                 </CardDescription>
               </div>
               <Button
-                onClick={() => createBackup.mutate()}
+                onClick={handleCreateBackup}
                 disabled={createBackup.isPending}
               >
                 <Database className="mr-2 h-4 w-4" />
