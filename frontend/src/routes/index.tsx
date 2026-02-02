@@ -3,6 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { useStats, useInstances, useMedia } from "~/lib/queries";
 import { Badge } from "~/components/ui/badge";
 import {
+  Skeleton,
+  StatsGridSkeleton,
+  InstanceListSkeleton,
+  MediaListSkeleton,
+  CardContentSkeleton,
+} from "~/components/ui/skeleton";
+import {
   Film,
   Tv,
   Server,
@@ -79,73 +86,75 @@ function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Film className="h-4 w-4" />
-              Total Media
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? "..." : totalMedia}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Movies and TV shows tracked
-            </p>
-          </CardContent>
-        </Card>
+      {statsLoading ? (
+        <StatsGridSkeleton />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Film className="h-4 w-4" />
+                Total Media
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalMedia}</div>
+              <p className="text-xs text-muted-foreground">
+                Movies and TV shows tracked
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              Instances
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? "..." : totalInstances}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Sonarr/Radarr connected
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                Instances
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalInstances}</div>
+              <p className="text-xs text-muted-foreground">
+                Sonarr/Radarr connected
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Dubbed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">
-              {statsLoading ? "..." : dubbedCount}
-            </div>
-            <p className="text-xs text-muted-foreground">Fully dubbed media</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Dubbed
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-500">
+                {dubbedCount}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Fully dubbed media
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              Issues
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {statsLoading ? "..." : issuesCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Semi-dub or wrong-dub
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Issues
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">
+                {issuesCount}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Semi-dub or wrong-dub
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Tag Breakdown */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -207,7 +216,7 @@ function Dashboard() {
           </CardHeader>
           <CardContent>
             {instancesLoading ? (
-              <p className="text-muted-foreground">Loading...</p>
+              <InstanceListSkeleton count={3} />
             ) : !typedInstances || typedInstances.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-muted-foreground mb-4">
@@ -261,7 +270,7 @@ function Dashboard() {
         </CardHeader>
         <CardContent>
           {mediaLoading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <MediaListSkeleton count={5} />
           ) : !typedMedia?.items || typedMedia.items.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-muted-foreground">No media scanned yet</p>

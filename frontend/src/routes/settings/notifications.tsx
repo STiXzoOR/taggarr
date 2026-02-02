@@ -47,6 +47,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { SettingsSidebar } from "./general";
+import { TableSkeleton } from "~/components/ui/skeleton";
 
 export const Route = createFileRoute("/settings/notifications")({
   component: NotificationsSettingsPage,
@@ -413,9 +414,7 @@ function NotificationsSettingsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading channels...
-                </div>
+                <TableSkeleton columns={5} rows={3} />
               ) : !typedChannels || typedChannels.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />

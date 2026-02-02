@@ -19,6 +19,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { SystemCardsSkeleton, Skeleton } from "~/components/ui/skeleton";
 
 export const Route = createFileRoute("/system")({
   component: SystemPage,
@@ -69,10 +70,51 @@ function SystemPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">System</h1>
-        <div className="text-center py-8 text-muted-foreground">
-          Loading system status...
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">System</h1>
+          <Skeleton className="h-9 w-24" />
         </div>
+
+        {/* Health Status Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+            <Skeleton className="h-4 w-48 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Status Cards Skeleton */}
+        <SystemCardsSkeleton />
+
+        {/* Detailed Info Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-56 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between border-b pb-2 last:border-0"
+                >
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

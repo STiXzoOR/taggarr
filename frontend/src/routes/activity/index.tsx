@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useLogStream } from "~/hooks/useLogStream";
+import { TableSkeleton } from "~/components/ui/skeleton";
 
 export const Route = createFileRoute("/activity/")({
   component: ActivityPage,
@@ -190,9 +191,7 @@ function ActivityPage() {
             </CardHeader>
             <CardContent className="p-0">
               {historyLoading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading history...
-                </div>
+                <TableSkeleton columns={6} rows={8} />
               ) : !typedHistory?.items || typedHistory.items.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   No history yet
@@ -279,9 +278,7 @@ function ActivityPage() {
             </CardHeader>
             <CardContent className="p-0">
               {queueLoading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading queue...
-                </div>
+                <TableSkeleton columns={6} rows={5} />
               ) : !typedQueue || typedQueue.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" />

@@ -46,6 +46,7 @@ import {
   Clock,
 } from "lucide-react";
 import { SettingsSidebar } from "./general";
+import { TableSkeleton } from "~/components/ui/skeleton";
 
 export const Route = createFileRoute("/settings/backup")({
   component: BackupSettingsPage,
@@ -298,9 +299,7 @@ function BackupSettingsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {backupsLoading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading backups...
-                </div>
+                <TableSkeleton columns={5} rows={3} />
               ) : !typedBackups || typedBackups.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />

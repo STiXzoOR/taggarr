@@ -28,6 +28,7 @@ import {
   Tv,
   RefreshCw,
 } from "lucide-react";
+import { TableSkeleton } from "~/components/ui/skeleton";
 
 interface SearchParams {
   page?: number;
@@ -224,9 +225,7 @@ function LibraryPage() {
       <Card>
         <CardContent className="p-0">
           {mediaLoading ? (
-            <div className="p-8 text-center text-muted-foreground">
-              Loading media...
-            </div>
+            <TableSkeleton columns={5} rows={10} />
           ) : !typedMedia?.items || typedMedia.items.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               No media found

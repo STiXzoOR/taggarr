@@ -44,6 +44,7 @@ import {
 } from "~/components/ui/table";
 import { Plus, Pencil, Trash2, Server, Tv, Film, TestTube } from "lucide-react";
 import { SettingsSidebar } from "./general";
+import { TableSkeleton } from "~/components/ui/skeleton";
 
 export const Route = createFileRoute("/settings/instances")({
   component: InstancesSettingsPage,
@@ -288,9 +289,7 @@ function InstancesSettingsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading instances...
-                </div>
+                <TableSkeleton columns={6} rows={3} />
               ) : !typedInstances || typedInstances.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />

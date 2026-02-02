@@ -42,6 +42,7 @@ import {
   Lock,
 } from "lucide-react";
 import { SettingsSidebar } from "./general";
+import { TableSkeleton } from "~/components/ui/skeleton";
 
 export const Route = createFileRoute("/settings/security")({
   component: SecuritySettingsPage,
@@ -386,9 +387,7 @@ function SecuritySettingsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {keysLoading ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading API keys...
-                </div>
+                <TableSkeleton columns={5} rows={3} />
               ) : !typedApiKeys || typedApiKeys.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
