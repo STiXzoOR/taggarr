@@ -11,6 +11,7 @@ from taggarr.api.routes import (
     config_router,
     history_router,
     instances_router,
+    logs_router,
     media_router,
     notifications_router,
     stats_router,
@@ -60,6 +61,7 @@ def create_app(base_url: str = "/") -> FastAPI:
     app.include_router(config_router)
     app.include_router(history_router)
     app.include_router(instances_router)
+    app.include_router(logs_router)
     app.include_router(media_router)
     app.include_router(notifications_router)
     app.include_router(stats_router)

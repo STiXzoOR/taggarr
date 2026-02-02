@@ -7,6 +7,7 @@ from taggarr.api.routes.commands import router as commands_router
 from taggarr.api.routes.config import router as config_router
 from taggarr.api.routes.history import router as history_router
 from taggarr.api.routes.instances import router as instances_router
+from taggarr.api.routes.logs import router as logs_router
 from taggarr.api.routes.media import router as media_router
 from taggarr.api.routes.notifications import router as notifications_router
 from taggarr.api.routes.stats import router as stats_router
@@ -20,6 +21,7 @@ __all__ = [
     "config_router",
     "history_router",
     "instances_router",
+    "logs_router",
     "media_router",
     "notifications_router",
     "stats_router",
