@@ -1,7 +1,9 @@
 <p align="center">
-  <img width="451px" src="https://raw.githubusercontent.com/BassHous3/taggarr/refs/heads/main/assets/logo/banner_transparent.png" alt=""></img>
+  <img width="451px" src="https://raw.githubusercontent.com/STiXzoOR/taggarr/refs/heads/main/assets/logo/banner_transparent.png" alt=""></img>
   <p></p>
 </p>
+
+> **Note:** This is a fork of [BassHous3/taggarr](https://github.com/BassHous3/taggarr) with additional features including native installation support, multi-instance configuration, and improved test coverage.
 
 > [!TIP]
 >
@@ -29,7 +31,7 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 > - `DUB` The show contains ALL of your target languages.
 > - `SEMI-DUB` The show missing at least one of your target languages or some episodes are missing the dub.
 > - `WRONG-DUB` The show is missing your target languages and contains another language (excluding original language).
-> - `ADD_TAG_TO_GENRE` The tag list in the media players can be massive. This function will add the tag `Dub` in the genre section only for `DUB` shows. From version [0.4.19](https://github.com/BassHous3/taggarr/releases/tag/0.4.19).
+> - `ADD_TAG_TO_GENRE` The tag list in the media players can be massive. This function will add the tag `Dub` in the genre section only for `DUB` shows. From version [0.4.19](https://github.com/STiXzoOR/taggarr/releases/tag/0.4.19).
 
 > [!IMPORTANT]
 > **Quick Start:**
@@ -39,12 +41,12 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 > 2. **Docker**  
 >    Pull the Docker image from `docker.io/stixzoor/taggarr:latest`
 > 3. **Configs**  
->    Make sure to use `/tv` as path to your **CONTAINER** (not host). Check out [example of yaml configs](https://github.com/BassHous3/taggarr?tab=readme-ov-file#configuration-example) below.
+>    Make sure to use `/tv` as path to your **CONTAINER** (not host). Check out [example of yaml configs](https://github.com/STiXzoOR/taggarr?tab=readme-ov-file#configuration-example) below.
 > 4. **Media players**  
 >    After tags are applied they should work in the media players, if not, scan TV's library metadata using `Replace all metadata` method (leave `Replace Images` unchecked).
 
 <br></br>
-[![GitHub last commit](https://img.shields.io/github/release-date/BassHous3/taggarr?style=for-the-badge&logo=github)](https://github.com/BassHous3/taggarr)
+[![GitHub last commit](https://img.shields.io/github/release-date/STiXzoOR/taggarr?style=for-the-badge&logo=github)](https://github.com/STiXzoOR/taggarr)
 [![Latest tag](https://img.shields.io/docker/v/stixzoor/taggarr?style=for-the-badge&logo=docker)](https://hub.docker.com/r/stixzoor/taggarr)
 [![Docker pulls](https://img.shields.io/docker/pulls/stixzoor/taggarr?style=for-the-badge&logo=docker)](https://hub.docker.com/r/stixzoor/taggarr)
 [![Discord](https://img.shields.io/discord/1387237436765241344?style=for-the-badge&logo=discord)](https://discord.com/invite/uggq7JQk89)
@@ -93,8 +95,7 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 
 </div>
 
-<h3 align="center"> Do you appreciate the time and effort it took to make this?  </h3> 
-<h3 align="center"> You can support me with a cup of coffee, every little helps. </h3> 
+<h3 align="center"> Support the original author (BassHous3) with a coffee: </h3>
 <h3 align="center"> <a href="https://ko-fi.com/basshouse" target="_blank"><img src="https://cdn.prod.website-files.com/5c14e387dab576fe667689cf/670f5a0172b90570b1c21dab_kofi_logo.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 150px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> </h3> <br><br>
 
 ## INFO & QUICK START
@@ -133,6 +134,13 @@ This way, you can filter your shows based on if they're dubbed or not, using tag
 <br>
 
 ## CREDITS
+
+**This project is a fork of [BassHous3/taggarr](https://github.com/BassHous3/taggarr).**
+
+Original author: **[BassHous3](https://github.com/BassHous3)** - Creator of Taggarr and the core tagging logic.
+
+If you appreciate the original work, consider supporting the original author:
+<a href="https://ko-fi.com/basshouse" target="_blank"><img src="https://cdn.prod.website-files.com/5c14e387dab576fe667689cf/670f5a0172b90570b1c21dab_kofi_logo.png" alt="Buy Me A Coffee" style="height: 30px !important;" ></a>
 
 Special thanks for inspiration goes to:
 
