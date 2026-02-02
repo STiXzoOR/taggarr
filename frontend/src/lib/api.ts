@@ -152,4 +152,43 @@ export const api = {
       body: JSON.stringify(data),
       credentials: "include",
     }).then(handleResponse),
+
+  getMediaDetail: (mediaId: number) =>
+    fetch(`${API_BASE}/media/${mediaId}`, {
+      credentials: "include",
+    }).then(
+      handleResponse<{
+        id: number;
+        instance_id: number;
+        title: string;
+      }>,
+    ),
+
+  // Commands
+  createCommand: (name: string, body?: Record<string, unknown>) =>
+    fetch(`${API_BASE}/command`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, body }),
+      credentials: "include",
+    }).then(
+      handleResponse<{
+        id: number;
+        name: string;
+        status: string;
+        queued_at: string;
+      }>,
+    ),
+
+  // Scan operations
+  scanInstance: (instanceId: number) =>
+    fetch(`${API_BASE}/command`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "ScanInstance",
+        body: { instance_id: instanceId },
+      }),
+      credentials: "include",
+    }).then(handleResponse),
 };

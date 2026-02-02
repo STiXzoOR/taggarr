@@ -14,6 +14,7 @@ export const queryKeys = {
   instance: (id: number) => ["instances", id] as const,
   media: (params?: Parameters<typeof api.getMedia>[0]) =>
     ["media", params] as const,
+  mediaDetail: (id: number) => ["media", id] as const,
   tags: ["tags"] as const,
   config: (key: string) => ["config", key] as const,
   uiConfig: ["config", "ui"] as const,
@@ -197,6 +198,69 @@ export function useConfigs<T extends string>(keys: T[]) {
   const isError = results.some((r) => r.isError);
 
   return { data, results, isLoading, isError };
+}
+
+/**
+ * Mutation for scanning a single instance.
+ */
+export function useScanInstance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (instanceId: number) => api.scanInstance(instanceId),
+    onSuccess: () => {
+      // Invalidate media queries to refresh data after scan completes
+      queryClient.invalidateQueries({ queryKey: ["media"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stats });
+    },
+  });
+}
+
+/**
+ * Mutation for scanning all instances.
+ * Fetches all instances and queues a scan command for each enabled one.
+ */
+export function useRescanAll() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const instances = (await api.getInstances()) as Array<{
+        id: number;
+        enabled: boolean;
+      }>;
+      const enabledInstances = instances.filter((i) => i.enabled);
+
+      // Queue scan commands for all enabled instances
+      const results = await Promise.all(
+        enabledInstances.map((instance) => api.scanInstance(instance.id)),
+      );
+      return results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stats });
+    },
+  });
+}
+
+/**
+ * Mutation for rescanning a specific media item.
+ * Fetches the media to get its instance_id, then queues a scan for that instance.
+ */
+export function useRescanMedia() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mediaId: number) => {
+      const media = await api.getMediaDetail(mediaId);
+      return api.scanInstance(media.instance_id);
+    },
+    onSuccess: (_, mediaId) => {
+      queryClient.invalidateQueries({ queryKey: ["media"] });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.mediaDetail(mediaId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stats });
+    },
+  });
 }
 
 /**

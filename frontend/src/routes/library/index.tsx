@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMedia, useInstances, useTags } from "~/lib/queries";
+import { useMedia, useInstances, useTags, useRescanAll } from "~/lib/queries";
 import { getTagBadgeClass } from "~/lib/tag-utils";
+import { toast } from "~/lib/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -26,8 +27,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Film,
+  Tv,
   RefreshCw,
   Library,
+  Loader2,
 } from "lucide-react";
 import { TableSkeleton } from "~/components/ui/skeleton";
 import { EmptyState } from "~/components/ui/empty-state";
@@ -98,6 +101,15 @@ function LibraryPage() {
 
   const { data: instances } = useInstances();
   const { data: tags } = useTags();
+  const rescanAll = useRescanAll();
+
+  const handleRescanAll = () => {
+    toast.promise(rescanAll.mutateAsync(), {
+      loading: "Queuing rescan for all instances...",
+      success: "Rescan queued for all instances",
+      error: "Failed to queue rescan",
+    });
+  };
 
   const typedMedia = mediaData as MediaResponse | undefined;
   const typedInstances = instances as Instance[] | undefined;
@@ -148,8 +160,18 @@ function LibraryPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold">Library</h1>
-        <Button variant="outline" size="sm" className="w-fit">
-          <RefreshCw className="mr-2 h-4 w-4" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-fit"
+          onClick={handleRescanAll}
+          disabled={rescanAll.isPending}
+        >
+          {rescanAll.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
           Rescan All
         </Button>
       </div>

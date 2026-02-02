@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "~/lib/api";
+import { useRescanMedia } from "~/lib/queries";
 import { getTagBadgeClass } from "~/lib/tag-utils";
 import {
   Card,
@@ -45,6 +46,7 @@ import {
   Settings,
   Clock,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "~/lib/toast";
@@ -80,6 +82,7 @@ function MediaDetailPage() {
   const { mediaId } = Route.useParams();
   const [overrideOpen, setOverrideOpen] = useState(false);
   const queryClient = useQueryClient();
+  const rescanMedia = useRescanMedia();
 
   // Form state for override settings
   const [overrideRequireOriginal, setOverrideRequireOriginal] = useState<
@@ -128,6 +131,14 @@ function MediaDetailPage() {
     } catch {
       toast.error("Failed to save settings");
     }
+  };
+
+  const handleRescan = () => {
+    toast.promise(rescanMedia.mutateAsync(Number(mediaId)), {
+      loading: "Queuing rescan...",
+      success: "Rescan queued successfully",
+      error: "Failed to queue rescan",
+    });
   };
 
   if (isLoading) {
@@ -248,8 +259,17 @@ function MediaDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRescan}
+            disabled={rescanMedia.isPending}
+          >
+            {rescanMedia.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
             Rescan
           </Button>
           <Dialog open={overrideOpen} onOpenChange={handleOpenChange}>
