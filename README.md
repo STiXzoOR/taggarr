@@ -254,7 +254,7 @@ services:
 "last_modified": 1749517909.2880175
 },
 
-```
+````
 </details>
 
 
@@ -270,6 +270,101 @@ services:
 
 </details>
 
+## Native Installation
 
+### Prerequisites
+- [uv](https://docs.astral.sh/uv/) package manager
+- `mediainfo` system package:
+  - **Linux:** `apt install mediainfo` or `dnf install mediainfo`
+  - **macOS:** `brew install mediainfo`
+  - **Windows:** Download from [MediaArea](https://mediaarea.net/en/MediaInfo/Download/Windows)
 
+### Install
+```bash
+git clone https://github.com/STiXzoOR/taggarr.git
+cd taggarr
+uv sync
+````
+
+### Configure
+
+```bash
+# Linux/macOS
+mkdir -p ~/.config/taggarr
+cp taggarr.example.yaml ~/.config/taggarr/config.yaml
+# Edit config.yaml with your settings
+
+# Windows (PowerShell)
+mkdir "$env:APPDATA\taggarr" -Force
+cp taggarr.example.yaml "$env:APPDATA\taggarr\config.yaml"
 ```
+
+### Run
+
+```bash
+uv run taggarr           # Single scan
+uv run taggarr --loop    # Continuous mode
+```
+
+### Run as a Service
+
+<details>
+<summary>Linux (systemd user service)</summary>
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp contrib/systemd/taggarr.user.service ~/.config/systemd/user/taggarr.service
+# Edit WorkingDirectory in the service file if taggarr is not in ~/taggarr
+systemctl --user daemon-reload
+systemctl --user enable --now taggarr
+systemctl --user status taggarr
+```
+
+</details>
+
+<details>
+<summary>Linux (systemd system service)</summary>
+
+```bash
+sudo useradd -r -s /bin/false taggarr
+sudo mkdir -p /opt/taggarr
+sudo cp -r . /opt/taggarr
+sudo chown -R taggarr:taggarr /opt/taggarr
+sudo cp contrib/systemd/taggarr.system.service /etc/systemd/system/taggarr.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now taggarr
+sudo systemctl status taggarr
+```
+
+</details>
+
+<details>
+<summary>macOS (launchd)</summary>
+
+```bash
+cp contrib/launchd/com.taggarr.plist ~/Library/LaunchAgents/
+# Edit the plist file: replace YOURUSER with your actual username
+launchctl load ~/Library/LaunchAgents/com.taggarr.plist
+# Check status
+launchctl list | grep taggarr
+```
+
+</details>
+
+<details>
+<summary>Windows (NSSM)</summary>
+
+1. Download [NSSM](https://nssm.cc/download) and add to PATH
+2. Clone taggarr to `%USERPROFILE%\taggarr`
+3. Run PowerShell as Administrator:
+
+```powershell
+cd $env:USERPROFILE\taggarr
+.\contrib\nssm\install.ps1
+```
+
+Check status: `nssm status taggarr`
+
+</details>
+
+<br>
