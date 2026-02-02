@@ -147,3 +147,111 @@ class Season(Base):
     last_modified: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     media: Mapped["Media"] = relationship("Media", back_populates="seasons")
+
+
+class History(Base):
+    """Event history log for tracking actions and changes."""
+
+    __tablename__ = "history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    media_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("media.id"), nullable=True
+    )
+    instance_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("instances.id"), nullable=True
+    )
+    data: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    media: Mapped[Optional["Media"]] = relationship("Media")
+    instance: Mapped[Optional["Instance"]] = relationship("Instance")
+
+
+class Notification(Base):
+    """Notification provider configuration."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    implementation: Mapped[str] = mapped_column(String, nullable=False)
+    settings: Mapped[str] = mapped_column(String, nullable=False)
+    on_scan_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    on_wrong_dub_detected: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )
+    on_original_missing: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    on_health_issue: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    on_application_update: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    include_health_warnings: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    tags: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    status: Mapped[Optional["NotificationStatus"]] = relationship(
+        "NotificationStatus", back_populates="notification", uselist=False
+    )
+
+
+class NotificationStatus(Base):
+    """Status tracking for notification providers."""
+
+    __tablename__ = "notification_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    notification_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("notifications.id"), unique=True, nullable=False
+    )
+    last_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    notification: Mapped["Notification"] = relationship(
+        "Notification", back_populates="status"
+    )
+
+
+class Command(Base):
+    """Async command queue for background tasks."""
+
+    __tablename__ = "commands"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    queued_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    duration: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    exception: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    trigger: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class ScheduledTask(Base):
+    """Recurring scheduled task configuration."""
+
+    __tablename__ = "scheduled_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    type_name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    last_execution: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_start_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    interval: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class Backup(Base):
+    """Backup metadata storage."""
+
+    __tablename__ = "backups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+    path: Mapped[str] = mapped_column(String, nullable=False)
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
