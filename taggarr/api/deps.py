@@ -9,12 +9,23 @@ from taggarr.auth import is_session_expired
 from taggarr.db import SessionModel, User, create_engine, get_session
 
 
-def get_db() -> Generator[Session, None, None]:  # pragma: no cover
-    """Get database session dependency.
+def get_db(request: Request) -> Generator[Session, None, None]:
+    """Get database session from app state.
 
-    For now, use in-memory SQLite. Will be configured later.
+    Uses the engine stored in app.state.db_engine if available,
+    otherwise falls back to in-memory SQLite (for testing).
+
+    Args:
+        request: The incoming HTTP request.
+
+    Yields:
+        SQLAlchemy Session instance.
     """
-    engine = create_engine("sqlite:///:memory:")
+    engine = getattr(request.app.state, "db_engine", None)
+    if engine is None:  # pragma: no cover
+        # Fallback for testing without server setup
+        engine = create_engine("sqlite:///:memory:")
+
     with get_session(engine) as session:
         yield session
 
