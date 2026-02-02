@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from taggarr.db.database import create_engine, get_session
-from taggarr.db.models import ApiKey, Base, SessionModel, User
+from taggarr.db.models import ApiKey, Base, Config, Instance, SessionModel, User
 
 
 class TestUserModel:
@@ -109,3 +109,96 @@ class TestApiKeyModel:
             assert row.label == "My API Key"
             assert row.key == "hashed_api_key_value"
             assert row.last_used_at is not None
+
+
+class TestConfigModel:
+    """Tests for Config model."""
+
+    def test_config_model_key_value(self, tmp_path: Path) -> None:
+        """Config model should store key-value pairs."""
+        db_path = tmp_path / "test.db"
+        url = f"sqlite:///{db_path}"
+        engine = create_engine(url)
+        Base.metadata.create_all(engine)
+
+        with get_session(engine) as session:
+            config = Config(
+                key="app_version",
+                value="1.0.0",
+            )
+            session.add(config)
+
+        with get_session(engine) as session:
+            result = session.execute(text("SELECT * FROM config"))
+            row = result.fetchone()
+
+            assert row is not None
+            assert row.key == "app_version"
+            assert row.value == "1.0.0"
+
+    def test_config_key_unique(self, tmp_path: Path) -> None:
+        """Config keys must be unique."""
+        import pytest
+        from sqlalchemy.exc import IntegrityError
+
+        db_path = tmp_path / "test.db"
+        url = f"sqlite:///{db_path}"
+        engine = create_engine(url)
+        Base.metadata.create_all(engine)
+
+        with get_session(engine) as session:
+            config1 = Config(key="duplicate_key", value="value1")
+            session.add(config1)
+
+        with pytest.raises(IntegrityError):
+            with get_session(engine) as session:
+                config2 = Config(key="duplicate_key", value="value2")
+                session.add(config2)
+
+
+class TestInstanceModel:
+    """Tests for Instance model."""
+
+    def test_instance_model_create(self, tmp_path: Path) -> None:
+        """Instance model should store Sonarr/Radarr connection info."""
+        db_path = tmp_path / "test.db"
+        url = f"sqlite:///{db_path}"
+        engine = create_engine(url)
+        Base.metadata.create_all(engine)
+
+        with get_session(engine) as session:
+            instance = Instance(
+                name="Sonarr Main",
+                type="sonarr",
+                url="http://localhost:8989",
+                api_key="abc123xyz",
+                root_path="/media/tv",
+                target_languages='["eng", "jpn"]',
+                tags='["dub", "anime"]',
+                target_genre="Anime",
+                quick_mode=1,
+                enabled=1,
+                require_original_default=0,
+                notify_on_wrong_dub=1,
+                notify_on_original_missing=0,
+            )
+            session.add(instance)
+
+        with get_session(engine) as session:
+            result = session.execute(text("SELECT * FROM instances"))
+            row = result.fetchone()
+
+            assert row is not None
+            assert row.name == "Sonarr Main"
+            assert row.type == "sonarr"
+            assert row.url == "http://localhost:8989"
+            assert row.api_key == "abc123xyz"
+            assert row.root_path == "/media/tv"
+            assert row.target_languages == '["eng", "jpn"]'
+            assert row.tags == '["dub", "anime"]'
+            assert row.target_genre == "Anime"
+            assert row.quick_mode == 1
+            assert row.enabled == 1
+            assert row.require_original_default == 0
+            assert row.notify_on_wrong_dub == 1
+            assert row.notify_on_original_missing == 0

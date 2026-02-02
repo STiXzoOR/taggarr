@@ -52,3 +52,34 @@ class ApiKey(Base):
     label: Mapped[str] = mapped_column(String, nullable=False)
     key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class Config(Base):
+    """Key-value configuration storage."""
+
+    __tablename__ = "config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    value: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class Instance(Base):
+    """Sonarr/Radarr instance configuration."""
+
+    __tablename__ = "instances"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    url: Mapped[str] = mapped_column(String, nullable=False)
+    api_key: Mapped[str] = mapped_column(String, nullable=False)
+    root_path: Mapped[str] = mapped_column(String, nullable=False)
+    target_languages: Mapped[str] = mapped_column(String, nullable=False)
+    tags: Mapped[str] = mapped_column(String, nullable=False)
+    target_genre: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    quick_mode: Mapped[int] = mapped_column(Integer, nullable=False)
+    enabled: Mapped[int] = mapped_column(Integer, nullable=False)
+    require_original_default: Mapped[int] = mapped_column(Integer, nullable=False)
+    notify_on_wrong_dub: Mapped[int] = mapped_column(Integer, nullable=False)
+    notify_on_original_missing: Mapped[int] = mapped_column(Integer, nullable=False)
