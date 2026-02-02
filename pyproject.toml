@@ -1,7 +1,3 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "taggarr"
 version = "0.7.0"
@@ -14,11 +10,11 @@ dependencies = [
     "PyYAML>=6.0",
 ]
 
-[tool.setuptools.packages.find]
-include = ["taggarr*"]
+[project.scripts]
+taggarr = "main:main"
 
-[project.optional-dependencies]
-dev = [
+[dependency-groups]
+test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-mock>=3.0",
