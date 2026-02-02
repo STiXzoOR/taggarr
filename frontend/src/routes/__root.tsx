@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { AuthProvider } from "~/lib/auth";
 import { ProtectedRoute } from "~/components/protected-route";
 import { MainLayout } from "~/components/layout";
+import { ErrorBoundary } from "~/components/error-boundary";
 import "~/styles.css";
 
 const queryClient = new QueryClient({
@@ -45,15 +46,17 @@ const PUBLIC_ROUTES = ["/login", "/setup"];
 
 function RootComponent() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ProtectedRoute>
-          <RootDocument>
-            <LayoutWrapper />
-          </RootDocument>
-        </ProtectedRoute>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ProtectedRoute>
+            <RootDocument>
+              <LayoutWrapper />
+            </RootDocument>
+          </ProtectedRoute>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
