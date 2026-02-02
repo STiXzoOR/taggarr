@@ -537,6 +537,128 @@ class TestGetMediaHistory:
         assert response.json()["detail"] == "Media not found"
 
 
+class TestValidatorEdgeCases:
+    """Tests for validator edge cases in response models."""
+
+    def test_season_response_with_list_values(self) -> None:
+        """SeasonResponse handles fields that are already lists (not JSON strings)."""
+        from taggarr.api.routes.media import SeasonResponse
+
+        # Test validator directly with list values
+        response = SeasonResponse(
+            id=1,
+            media_id=1,
+            season_number=1,
+            episode_count=10,
+            status="complete",
+            original_dub=["en"],  # Already a list, not JSON string
+            dub=["en", "de"],
+            missing_dub=["fr"],
+            unexpected_languages=["es"],
+            last_modified=None,
+        )
+
+        assert response.original_dub == ["en"]
+        assert response.dub == ["en", "de"]
+        assert response.missing_dub == ["fr"]
+        assert response.unexpected_languages == ["es"]
+
+    def test_media_with_no_tag(
+        self,
+        authenticated_client,
+        db_session: Session,
+        sample_instance: Instance,
+    ) -> None:
+        """Media with no tag assigned returns tag_id and tag_label as None."""
+        media = create_media_in_db(db_session, sample_instance, tag=None)
+
+        response = authenticated_client.get(f"/api/v1/media/{media.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tag_id"] is None
+        assert data["tag_label"] is None
+
+    def test_media_with_no_seasons(
+        self,
+        authenticated_client,
+        db_session: Session,
+        sample_instance: Instance,
+    ) -> None:
+        """Media with no seasons returns empty seasons list."""
+        media = create_media_in_db(db_session, sample_instance)
+        # Don't create any seasons
+
+        response = authenticated_client.get(f"/api/v1/media/{media.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["seasons"] == []
+
+    def test_media_list_item_with_bool_override_values(self) -> None:
+        """MediaListItem handles override fields that are already bools (not ints)."""
+        from taggarr.api.routes.media import MediaListItem
+
+        # Test validator directly with boolean values
+        response = MediaListItem(
+            id=1,
+            instance_id=1,
+            title="Test Show",
+            path="/media/tv/Test",
+            media_type="series",
+            original_language="en",
+            tag_id=None,
+            added=datetime.now(),
+            last_scanned=None,
+            override_require_original=True,  # Boolean, not int
+            override_notify=False,  # Boolean, not int
+        )
+
+        assert response.override_require_original is True
+        assert response.override_notify is False
+
+    def test_history_with_null_data(
+        self,
+        authenticated_client,
+        db_session: Session,
+        sample_instance: Instance,
+    ) -> None:
+        """History entry with null data returns data as None."""
+        media = create_media_in_db(db_session, sample_instance)
+        history = History(
+            date=datetime.now(),
+            event_type="scan",
+            media_id=media.id,
+            instance_id=None,
+            data=None,  # Null data
+        )
+        db_session.add(history)
+        db_session.commit()
+
+        response = authenticated_client.get(f"/api/v1/media/{media.id}/history")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["data"] is None
+
+    def test_history_response_with_dict_data(self) -> None:
+        """HistoryResponse handles data that is already a dict (not JSON string)."""
+        from taggarr.api.routes.media import HistoryResponse
+
+        # Test validator directly with dict value
+        response = HistoryResponse(
+            id=1,
+            date=datetime.now(),
+            event_type="tag_updated",
+            media_id=1,
+            instance_id=None,
+            data={"old_tag": "dub", "new_tag": "semi-dub"},  # Already a dict
+        )
+
+        assert response.data == {"old_tag": "dub", "new_tag": "semi-dub"}
+
+
 class TestMediaAuthRequired:
     """Tests for authentication requirement on media routes."""
 
