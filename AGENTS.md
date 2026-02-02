@@ -1,72 +1,52 @@
 # AGENTS.md
 
-Python tool that scans media libraries and tags TV shows/movies based on audio dubs. Supports multiple Sonarr/Radarr instances via YAML configuration.
+Python tool that scans media libraries and tags TV shows/movies based on audio dubs via Sonarr/Radarr APIs.
 
-## Quick Start
+## Essentials
 
-**System dependency:** `mediainfo` (brew install mediainfo / apt-get install mediainfo)
-
-**Install & Run (Native):**
-```bash
-git clone https://github.com/STiXzoOR/taggarr.git
-cd taggarr
-uv sync
-uv run taggarr --loop
-```
-
-**Run (Docker):**
-```bash
-docker run -p 8191:8191 ghcr.io/stixzoor/taggarr:latest
-```
-
-**Config locations:**
-- `./taggarr.yaml` (current directory)
-- `$XDG_CONFIG_HOME/taggarr/config.yaml` (Linux/macOS)
-- `~/.config/taggarr/config.yaml` (Linux/macOS fallback)
-- `%APPDATA%\taggarr\config.yaml` (Windows)
+| Item              | Value                          |
+| ----------------- | ------------------------------ |
+| Package manager   | `uv`                           |
+| System dependency | `mediainfo`                    |
+| Run tests         | `./test.sh` or `uv run pytest` |
+| Coverage minimum  | 99% (enforced)                 |
 
 ## Tagging Logic
 
-- `dub` - All target languages present in all episodes
-- `semi-dub` - Missing some target languages or episodes
-- `wrong-dub` - Contains unexpected languages (not original or target)
-- No tag - Original language only
-
-## Development
-
-**Setup:**
-```bash
-uv sync --group test
-```
-
-**Run tests:**
-```bash
-./test.sh
-# or
-uv run pytest
-```
-
-**Current coverage:** 99%+ (262 tests)
-
-## Testing Requirements
-
-**IMPORTANT:** All new features and bug fixes MUST include tests.
-
-- **Target:** 100% code coverage for new code
-- **Minimum:** 99% overall coverage must be maintained
-- **Approach:** Write tests first (TDD) when possible
-- Follow existing test patterns in `tests/unit/`
-- Use `pytest-mock` for mocking external services
-- Use `responses` for mocking HTTP requests
-
-**Before committing:**
-```bash
-uv run pytest --cov=taggarr --cov-fail-under=99
-```
+| Tag         | Meaning                                                |
+| ----------- | ------------------------------------------------------ |
+| `dub`       | All target languages present in all episodes           |
+| `semi-dub`  | Missing some target languages or episodes              |
+| `wrong-dub` | Contains unexpected languages (not original or target) |
+| _(no tag)_  | Original language only                                 |
 
 ## Reference
 
-- [Architecture & Data Flow](.claude/docs/architecture.md)
-- [Configuration Reference](.claude/docs/configuration.md)
+- [Architecture & Data Flow](.claude/docs/architecture.md) - Package structure, data flow, key classes
+- [Configuration](.claude/docs/configuration.md) - YAML structure, CLI options, env vars
+- [Testing](.claude/docs/testing.md) - TDD approach, coverage requirements, mocking patterns
 - [Example Config](taggarr.example.yaml)
-- [Native Installation](README.md#native-installation)
+
+---
+
+## Maintaining This File
+
+This file follows **progressive disclosure**. When modifying:
+
+1. **Root file (this file)** - Only include what applies to _every single task_:
+   - One-line project description
+   - Package manager, system deps, test command
+   - Hard constraints (coverage minimum)
+   - Core domain concepts (tagging logic)
+
+2. **Separate files** - Move everything else to `.claude/docs/`:
+   - Detailed patterns → `testing.md`, `architecture.md`
+   - Configuration details → `configuration.md`
+   - New topic areas → create new `<topic>.md`
+
+3. **Don't include**:
+   - Instructions the agent already knows (e.g., "write clean code")
+   - Information discoverable from code (e.g., "use pytest-mock" - visible in tests)
+   - User-facing docs (installation guides belong in README)
+
+4. **Link, don't inline** - If content exceeds 5 lines, put it in a separate file and link to it.
