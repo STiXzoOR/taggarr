@@ -5,8 +5,20 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { AuthProvider } from "~/lib/auth";
+import { ProtectedRoute } from "~/components/protected-route";
 import "~/styles.css";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // 1 minute
+      retry: 1,
+    },
+  },
+});
 
 export const Route = createRootRoute({
   head: () => ({
@@ -28,9 +40,15 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ProtectedRoute>
+          <RootDocument>
+            <Outlet />
+          </RootDocument>
+        </ProtectedRoute>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
