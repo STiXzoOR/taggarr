@@ -5,7 +5,6 @@ import {
   Library,
   Settings,
   Activity,
-  Server,
   Monitor,
 } from "lucide-react";
 import {
@@ -14,6 +13,30 @@ import {
   SheetHeader,
   SheetTitle,
 } from "~/components/ui/sheet";
+
+function Logo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id="taggarrGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#06b6d4" />
+          <stop offset="50%" stopColor="#0891b2" />
+          <stop offset="100%" stopColor="#0e7490" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M2 6 L17 6 L28 16 L17 26 L2 26 Q1 26 1 25 L1 7 Q1 6 2 6 Z"
+        fill="url(#taggarrGrad)"
+      />
+      <circle cx="7" cy="16" r="2.5" fill="#0e7490" opacity="0.6" />
+      <circle cx="7" cy="16" r="1.5" fill="white" opacity="0.3" />
+      <path
+        d="M13 10 L24 10 L24 12.5 L20 12.5 L20 22 L17 22 L17 12.5 L13 12.5 Z"
+        fill="white"
+      />
+    </svg>
+  );
+}
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -60,9 +83,11 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
 function SidebarBrand() {
   return (
     <div className="p-4 border-b border-border">
-      <Link to="/" className="flex items-center gap-2">
-        <Server className="h-6 w-6 text-primary" />
-        <span className="text-xl font-bold">Taggarr</span>
+      <Link to="/" className="flex items-center gap-2.5">
+        <Logo className="h-7 w-7" />
+        <span className="text-xl font-bold bg-gradient-to-r from-cyan-500 to-cyan-700 bg-clip-text text-transparent">
+          Taggarr
+        </span>
       </Link>
     </div>
   );
@@ -87,9 +112,11 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-64 p-0">
         <SheetHeader className="p-4 border-b border-border">
-          <SheetTitle className="flex items-center gap-2">
-            <Server className="h-6 w-6 text-primary" />
-            <span>Taggarr</span>
+          <SheetTitle className="flex items-center gap-2.5">
+            <Logo className="h-7 w-7" />
+            <span className="bg-gradient-to-r from-cyan-500 to-cyan-700 bg-clip-text text-transparent">
+              Taggarr
+            </span>
           </SheetTitle>
         </SheetHeader>
         <SidebarNav onNavigate={() => onOpenChange(false)} />
