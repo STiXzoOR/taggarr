@@ -1,0 +1,16 @@
+[Unit]
+Description=Taggarr - Dub Analysis & Tagging
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=taggarr
+Group=taggarr
+WorkingDirectory=/opt/taggarr
+ExecStart=/usr/bin/env uv run taggarr --loop
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
