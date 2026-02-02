@@ -624,7 +624,6 @@ wheels = [
 
 [[package]]
 name = "taggarr"
-version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "pycountry" },
