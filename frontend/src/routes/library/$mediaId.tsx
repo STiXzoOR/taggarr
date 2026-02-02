@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "~/lib/api";
+import { getTagBadgeClass } from "~/lib/tag-utils";
 import {
   Card,
   CardContent,
@@ -126,19 +127,6 @@ function MediaDetailPage() {
       toast.success("Override settings saved");
     } catch {
       toast.error("Failed to save settings");
-    }
-  };
-
-  const getTagBadgeClass = (tagLabel?: string) => {
-    switch (tagLabel) {
-      case "dub":
-        return "bg-green-500 hover:bg-green-600";
-      case "semi-dub":
-        return "bg-yellow-500 hover:bg-yellow-600";
-      case "wrong-dub":
-        return "bg-red-500 hover:bg-red-600";
-      default:
-        return "";
     }
   };
 

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { useDashboardData } from "~/lib/queries";
 import { Badge } from "~/components/ui/badge";
+import { getTagBadgeClass } from "~/lib/tag-utils";
 import {
   Skeleton,
   StatsGridSkeleton,
@@ -296,17 +297,7 @@ function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     {item.tag_name && (
-                      <Badge
-                        className={
-                          item.tag_name === "dub"
-                            ? "bg-green-500"
-                            : item.tag_name === "semi-dub"
-                              ? "bg-yellow-500"
-                              : item.tag_name === "wrong-dub"
-                                ? "bg-red-500"
-                                : ""
-                        }
-                      >
+                      <Badge className={getTagBadgeClass(item.tag_name)}>
                         {item.tag_name}
                       </Badge>
                     )}

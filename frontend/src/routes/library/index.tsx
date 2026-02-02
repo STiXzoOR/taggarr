@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMedia, useInstances, useTags } from "~/lib/queries";
+import { getTagBadgeClass } from "~/lib/tag-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -140,19 +141,6 @@ function LibraryPage() {
         page: newPage,
       },
     });
-  };
-
-  const getTagBadgeClass = (tagName?: string) => {
-    switch (tagName) {
-      case "dub":
-        return "bg-green-500 hover:bg-green-600";
-      case "semi-dub":
-        return "bg-yellow-500 hover:bg-yellow-600";
-      case "wrong-dub":
-        return "bg-red-500 hover:bg-red-600";
-      default:
-        return "";
-    }
   };
 
   return (
