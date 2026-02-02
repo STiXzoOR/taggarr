@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "taggarr"
 version = "0.7.0"
@@ -37,3 +41,12 @@ exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.:",
 ]
+
+[tool.setuptools]
+packages = ["taggarr"]
+
+[tool.setuptools.package-dir]
+"" = "."
+
+[tool.uv]
+package = true

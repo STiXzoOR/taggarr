@@ -625,7 +625,7 @@ wheels = [
 [[package]]
 name = "taggarr"
 version = "0.7.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "pycountry" },
     { name = "pymediainfo" },
