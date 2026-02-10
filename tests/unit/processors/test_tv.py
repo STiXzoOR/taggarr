@@ -176,24 +176,27 @@ class TestApplyTags:
 
         tv._apply_tags(client, 1, instance.tags.dub, instance, False)
 
-        client.add_tag.assert_called_once_with(1, "dub", False)
-        assert client.remove_tag.call_count == 2  # Removes wrong and semi
+        client.apply_tag_changes.assert_called_once_with(
+            1, add_tags=["dub"], remove_tags=["semi-dub", "wrong-dub"], dry_run=False
+        )
 
     def test_adds_semi_tag_and_removes_others(self, instance):
         client = Mock()
 
         tv._apply_tags(client, 1, instance.tags.semi, instance, False)
 
-        client.add_tag.assert_called_once_with(1, "semi-dub", False)
-        assert client.remove_tag.call_count == 2
+        client.apply_tag_changes.assert_called_once_with(
+            1, add_tags=["semi-dub"], remove_tags=["dub", "wrong-dub"], dry_run=False
+        )
 
     def test_adds_wrong_tag_and_removes_others(self, instance):
         client = Mock()
 
         tv._apply_tags(client, 1, instance.tags.wrong, instance, False)
 
-        client.add_tag.assert_called_once_with(1, "wrong-dub", False)
-        assert client.remove_tag.call_count == 2
+        client.apply_tag_changes.assert_called_once_with(
+            1, add_tags=["wrong-dub"], remove_tags=["dub", "semi-dub"], dry_run=False
+        )
 
     def test_removes_all_tags_when_no_tag(self, instance, caplog):
         caplog.set_level(logging.INFO)
@@ -201,8 +204,9 @@ class TestApplyTags:
 
         tv._apply_tags(client, 1, None, instance, False)
 
-        client.add_tag.assert_not_called()
-        assert client.remove_tag.call_count == 3
+        client.apply_tag_changes.assert_called_once_with(
+            1, add_tags=[], remove_tags=["dub", "semi-dub", "wrong-dub"], dry_run=False
+        )
         assert "Removing all tags" in caplog.text
 
 
@@ -553,8 +557,10 @@ class TestProcessAll:
 
         result = tv.process_all(client, instance, opts, taggarr_data)
 
-        # Should call remove_tag for each tag type
-        assert client.remove_tag.call_count == 3
+        # Should call apply_tag_changes to remove all tags
+        client.apply_tag_changes.assert_called_once_with(
+            123, remove_tags=["dub", "semi-dub", "wrong-dub"], dry_run=False
+        )
         # Show should be removed from data
         assert str(show_path) not in result["series"]
         assert "Removing tags" in caplog.text
@@ -575,8 +581,10 @@ class TestProcessAll:
 
         result = tv.process_all(client, instance, opts, taggarr_data)
 
-        # Should still call remove_tag for each tag type
-        assert client.remove_tag.call_count == 3
+        # Should call apply_tag_changes to remove all tags
+        client.apply_tag_changes.assert_called_once_with(
+            123, remove_tags=["dub", "semi-dub", "wrong-dub"], dry_run=False
+        )
         # Should not fail even though show wasn't in data
         assert str(show_path) not in result["series"]
 

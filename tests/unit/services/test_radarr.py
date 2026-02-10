@@ -5,6 +5,7 @@ import pytest
 import responses
 
 from taggarr.services.radarr import RadarrClient
+from taggarr.exceptions import ApiTransientError
 
 
 @pytest.fixture
@@ -54,13 +55,27 @@ class TestGetMovies:
         responses.add(
             responses.GET,
             "http://radarr:7878/api/v3/movie",
-            body=Exception("Connection error"),
+            status=500,
         )
 
         result = client.get_movies()
 
         assert result == []
         assert "Failed to fetch" in caplog.text
+
+    @responses.activate
+    def test_caches_movie_list(self, client):
+        """Test that movie list is cached across calls."""
+        responses.add(
+            responses.GET,
+            "http://radarr:7878/api/v3/movie",
+            json=[{"id": 1, "title": "Test"}],
+        )
+
+        client.get_movies()
+        client.get_movies()
+
+        assert len(responses.calls) == 1
 
 
 class TestGetMovieByPath:
@@ -114,17 +129,34 @@ class TestGetMovieByPath:
         responses.add(
             responses.GET,
             "http://radarr:7878/api/v3/movie",
-            body=Exception("Connection error"),
+            status=500,
         )
 
         result = client.get_movie_by_path("/media/movies/Test")
 
         assert result is None
-        assert "Radarr lookup failed" in caplog.text
+        assert "Failed to fetch" in caplog.text
 
     @responses.activate
-    def test_matches_by_basename(self, client):
-        """Test that matching is done by folder basename, not full path."""
+    def test_matches_by_full_path_first(self, client):
+        """Test that full path matching takes priority over basename."""
+        responses.add(
+            responses.GET,
+            "http://radarr:7878/api/v3/movie",
+            json=[
+                {"id": 1, "title": "Movie A", "path": "/other/root/Movie (2020)"},
+                {"id": 2, "title": "Movie B", "path": "/media/movies/Movie (2020)"},
+            ],
+        )
+
+        result = client.get_movie_by_path("/media/movies/Movie (2020)")
+
+        assert result is not None
+        assert result["id"] == 2
+
+    @responses.activate
+    def test_falls_back_to_basename(self, client):
+        """Test basename fallback when full path doesn't match."""
         responses.add(
             responses.GET,
             "http://radarr:7878/api/v3/movie",
@@ -170,17 +202,15 @@ class TestAddTag:
         assert len([c for c in responses.calls if c.request.method == "POST"]) == 0
 
     @responses.activate
-    def test_does_not_add_duplicate_tag(self, client):
-        """Test that tag is not added if movie already has it."""
+    def test_does_not_modify_when_tag_already_present(self, client):
+        """Test that no PUT is made if movie already has the tag."""
         responses.add(responses.GET, "http://radarr:7878/api/v3/tag", json=[{"id": 5, "label": "dub"}])
         responses.add(responses.GET, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": [5]})
-        responses.add(responses.PUT, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": [5]})
 
         client.add_tag(42, "dub")
 
-        # PUT should still be called but tag list unchanged
         put_calls = [c for c in responses.calls if c.request.method == "PUT"]
-        assert len(put_calls) == 1
+        assert len(put_calls) == 0
 
 
 class TestRemoveTag:
@@ -201,6 +231,9 @@ class TestRemoveTag:
         responses.add(responses.GET, "http://radarr:7878/api/v3/tag", json=[])
 
         client.remove_tag(42, "nonexistent")  # Should not raise
+
+        # Only the tag lookup should happen
+        assert len(responses.calls) == 1
 
     def test_dry_run_does_not_call_api(self, client, caplog):
         caplog.set_level(logging.INFO)
@@ -252,7 +285,7 @@ class TestGetTagId:
         responses.add(
             responses.GET,
             "http://radarr:7878/api/v3/tag",
-            body=Exception("Connection error"),
+            status=500,
         )
 
         result = client._get_tag_id("dub")
@@ -260,37 +293,44 @@ class TestGetTagId:
         assert result is None
 
 
-class TestModifyMovieTags:
-    """Tests for _modify_movie_tags method."""
+class TestApplyTagChanges:
+    """Tests for apply_tag_changes method (atomic tag operations)."""
 
     @responses.activate
-    def test_handles_api_error(self, client, caplog):
-        caplog.set_level(logging.WARNING)
+    def test_adds_and_removes_in_single_put(self, client):
         responses.add(
             responses.GET,
-            "http://radarr:7878/api/v3/movie/42",
-            body=Exception("Connection error"),
+            "http://radarr:7878/api/v3/tag",
+            json=[{"id": 1, "label": "dub"}, {"id": 2, "label": "wrong-dub"}],
         )
-
-        # Should not raise
-        client._modify_movie_tags(42, 1, remove=False)
-
-        assert "Failed to modify" in caplog.text
-
-    @responses.activate
-    def test_removes_tag_when_present(self, client):
         responses.add(
             responses.GET,
             "http://radarr:7878/api/v3/movie/42",
-            json={"id": 42, "tags": [1, 2, 3]},
+            json={"id": 42, "tags": [2]},
         )
         responses.add(
             responses.PUT,
             "http://radarr:7878/api/v3/movie/42",
-            json={"id": 42, "tags": [1, 3]},
+            json={"id": 42, "tags": [1]},
         )
 
-        client._modify_movie_tags(42, 2, remove=True)
+        client.apply_tag_changes(42, add_tags=["dub"], remove_tags=["wrong-dub"])
 
         put_calls = [c for c in responses.calls if c.request.method == "PUT"]
         assert len(put_calls) == 1
+
+    @responses.activate
+    def test_handles_api_error_on_get(self, client):
+        responses.add(
+            responses.GET,
+            "http://radarr:7878/api/v3/tag",
+            json=[{"id": 1, "label": "dub"}],
+        )
+        responses.add(
+            responses.GET,
+            "http://radarr:7878/api/v3/movie/42",
+            status=500,
+        )
+
+        with pytest.raises(ApiTransientError):
+            client.apply_tag_changes(42, add_tags=["dub"])

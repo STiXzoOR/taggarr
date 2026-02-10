@@ -77,21 +77,35 @@ class TestAnalyzeAudio:
         assert "__fallback_original__" in result
 
     @patch("taggarr.services.media.MediaInfo.parse")
-    def test_handles_mixed_labeled_and_unlabeled(self, mock_parse):
+    def test_no_fallback_for_non_first_unlabeled_track(self, mock_parse):
+        """Non-first audio track without language should not trigger fallback."""
         mock_parse.return_value = MockMediaInfo([
             MockTrack("Audio", language="en"),
-            MockTrack("Audio", language="", title="Track 1"),  # Fallback
+            MockTrack("Audio", language="", title="Track 1"),
         ])
 
         result = media.analyze_audio("/path/to/video.mkv")
 
         assert "en" in result
+        assert "__fallback_original__" not in result
+
+    @patch("taggarr.services.media.MediaInfo.parse")
+    def test_fallback_for_first_unlabeled_with_labeled_second(self, mock_parse):
+        """First track unlabeled, second labeled - fallback applies to first."""
+        mock_parse.return_value = MockMediaInfo([
+            MockTrack("Audio", language="", title=""),
+            MockTrack("Audio", language="ja"),
+        ])
+
+        result = media.analyze_audio("/path/to/video.mkv")
+
         assert "__fallback_original__" in result
+        assert "ja" in result
 
     @patch("taggarr.services.media.MediaInfo.parse")
     def test_returns_empty_list_on_parse_error(self, mock_parse, caplog):
         caplog.set_level(logging.WARNING)
-        mock_parse.side_effect = Exception("Parse error")
+        mock_parse.side_effect = RuntimeError("Parse error")
 
         result = media.analyze_audio("/path/to/video.mkv")
 
@@ -133,10 +147,22 @@ class TestAnalyzeAudio:
         assert "Fallback language detection" in caplog.text
 
     @patch("taggarr.services.media.MediaInfo.parse")
-    def test_does_not_use_fallback_for_named_track(self, mock_parse):
-        """Test that tracks with descriptive titles don't trigger fallback."""
+    def test_does_not_use_fallback_for_commentary_track(self, mock_parse):
+        """First track with commentary title should not trigger fallback."""
         mock_parse.return_value = MockMediaInfo([
             MockTrack("Audio", language="", title="Commentary"),
+        ])
+
+        result = media.analyze_audio("/path/to/video.mkv")
+
+        assert "__fallback_original__" not in result
+        assert result == []
+
+    @patch("taggarr.services.media.MediaInfo.parse")
+    def test_does_not_use_fallback_for_directors_commentary(self, mock_parse):
+        """Director's commentary at first position should not trigger fallback."""
+        mock_parse.return_value = MockMediaInfo([
+            MockTrack("Audio", language="", title="Director's Commentary"),
         ])
 
         result = media.analyze_audio("/path/to/video.mkv")

@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from fastapi import WebSocketDisconnect
+
 from taggarr.api.websocket import (
     WebSocketLogHandler,
     connected_clients,
@@ -248,3 +250,50 @@ class TestBroadcast:
         with patch.object(handler, "format_log_entry", side_effect=Exception("Format error")):
             # Should not raise
             handler.emit(record)
+
+
+class TestWebsocketLogs:
+    """Tests for websocket_logs endpoint."""
+
+    def test_accepts_connection_and_sends_buffered_logs(self) -> None:
+        """websocket_logs sends buffered logs on connect then cleans up on disconnect."""
+        from taggarr.api.websocket import websocket_logs
+
+        mock_ws = AsyncMock()
+        # Simulate disconnect after accept
+        mock_ws.receive_text.side_effect = WebSocketDisconnect()
+
+        # Pre-fill buffer
+        log_buffer.append({"message": "buffered log", "level": "INFO"})
+
+        run_async(websocket_logs(mock_ws))
+
+        mock_ws.accept.assert_called_once()
+        mock_ws.send_text.assert_called_once()
+        assert "buffered log" in mock_ws.send_text.call_args[0][0]
+        # Client should be cleaned up
+        assert mock_ws not in connected_clients
+
+    def test_adds_and_removes_client(self) -> None:
+        """websocket_logs adds client on connect and removes on disconnect."""
+        from taggarr.api.websocket import websocket_logs
+
+        mock_ws = AsyncMock()
+        mock_ws.receive_text.side_effect = WebSocketDisconnect()
+
+        run_async(websocket_logs(mock_ws))
+
+        # After disconnect, client should be removed
+        assert mock_ws not in connected_clients
+
+    def test_handles_multiple_messages_before_disconnect(self) -> None:
+        """websocket_logs loops receiving messages until disconnect."""
+        from taggarr.api.websocket import websocket_logs
+
+        mock_ws = AsyncMock()
+        # Receive 2 messages then disconnect
+        mock_ws.receive_text.side_effect = ["ping", "pong", WebSocketDisconnect()]
+
+        run_async(websocket_logs(mock_ws))
+
+        assert mock_ws.receive_text.call_count == 3

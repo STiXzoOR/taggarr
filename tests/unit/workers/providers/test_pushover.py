@@ -121,6 +121,42 @@ class TestPushoverProviderTest:
             assert success is False
             assert "Unexpected" in message
 
+    def test_send_includes_priority_when_set(self, provider) -> None:
+        """send() includes priority in payload when specified."""
+        with patch("taggarr.workers.providers.pushover.httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            mock_response.json = MagicMock(return_value={"status": 1})
+
+            mock_instance = AsyncMock()
+            mock_instance.post = AsyncMock(return_value=mock_response)
+            mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
+            mock_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_client.return_value = mock_instance
+
+            run_async(
+                provider.send(
+                    "Title", "Message",
+                    {"user_key": "user", "api_token": "token", "priority": 1},
+                )
+            )
+
+            payload = mock_instance.post.call_args[1]["data"]
+            assert payload["priority"] == 1
+
+    def test_test_returns_failure_on_http_error(self, provider) -> None:
+        """test() returns failure tuple on httpx.HTTPError."""
+        import httpx
+        with patch.object(
+            provider, "send",
+            new=AsyncMock(side_effect=httpx.HTTPError("Connection refused")),
+        ):
+            success, message = run_async(
+                provider.test({"user_key": "user", "api_token": "token"})
+            )
+            assert success is False
+            assert "Pushover API failed" in message
+
     def test_send_raises_on_api_error_without_errors_field(self, provider) -> None:
         """send() raises ValueError with default error message."""
         with patch("taggarr.workers.providers.pushover.httpx.AsyncClient") as mock_client:

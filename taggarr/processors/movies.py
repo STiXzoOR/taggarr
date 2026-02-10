@@ -1,13 +1,16 @@
 """Movie scanning and tagging processor."""
 
+from __future__ import annotations
+
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from taggarr.config_schema import InstanceConfig
 from taggarr.services.radarr import RadarrClient
 from taggarr.services import media
+from taggarr.storage import json_store
 from taggarr import nfo, languages
 
 logger = logging.getLogger("taggarr")
@@ -80,8 +83,8 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         # Handle remove mode
         if write_mode == 2:
             logger.info(f"Removing tags for {movie_folder}")
-            for tag in [instance.tags.dub, instance.tags.wrong]:
-                client.remove_tag(movie_id, tag, dry_run)
+            all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
+            client.apply_tag_changes(movie_id, remove_tags=all_tags, dry_run=dry_run)
             if movie_path in taggarr_movies["movies"]:
                 del taggarr_movies["movies"][movie_path]
             continue
@@ -95,16 +98,15 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         tag = _determine_tag(scan_result, instance, language_codes)
         logger.info(f"Tagged as {tag or 'no tag (original)'}")
 
-        # Apply tags to Radarr
+        # Apply tags to Radarr atomically
+        all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
         if tag:
-            client.add_tag(movie_id, tag, dry_run)
-            if tag == instance.tags.wrong:
-                client.remove_tag(movie_id, instance.tags.dub, dry_run)
-            elif tag == instance.tags.dub:
-                client.remove_tag(movie_id, instance.tags.wrong, dry_run)
+            add_tags = [tag]
+            remove_tags = [t for t in all_tags if t != tag]
         else:
-            for t in [instance.tags.dub, instance.tags.wrong]:
-                client.remove_tag(movie_id, t, dry_run)
+            add_tags = []
+            remove_tags = all_tags
+        client.apply_tag_changes(movie_id, add_tags=add_tags, remove_tags=remove_tags, dry_run=dry_run)
 
         # Update NFO if applicable
         nfo_path = _find_nfo(movie_path, movie_folder)
@@ -115,11 +117,21 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         taggarr_movies["movies"][movie_path] = {
             "display_name": movie_folder,
             "tag": tag or "none",
-            "last_scan": datetime.utcnow().isoformat() + "Z",
+            "last_scan": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "original_language": scan_result["original_language"],
             "languages": scan_result["languages"],
             "last_modified": current_mtime,
         }
+
+    # Cleanup orphaned entries
+    current_paths = set()
+    for entry in os.listdir(instance.root_path):
+        path = os.path.abspath(os.path.join(instance.root_path, entry))
+        if os.path.isdir(path):
+            current_paths.add(path)
+    removed = json_store.cleanup_orphans(taggarr_movies, "movies", current_paths)
+    if removed:
+        logger.info(f"Cleaned up {removed} orphaned movie entries")
 
     return taggarr_movies
 

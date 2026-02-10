@@ -425,6 +425,32 @@ class TestSystemStatus:
         assert data["last_backup"] is None
 
 
+class TestSystemStatusWithAppState:
+    """Tests for system status with startup_time and db_path in app state."""
+
+    def test_system_status_with_startup_time(self, authenticated_client, app) -> None:
+        """GET /api/v1/system/status returns nonzero uptime when startup_time is set."""
+        app.state.startup_time = datetime.now(timezone.utc) - timedelta(seconds=120)
+
+        response = authenticated_client.get("/api/v1/system/status")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["uptime_seconds"] >= 119  # Allow 1s tolerance
+
+    def test_system_status_with_db_path(self, authenticated_client, app, tmp_path) -> None:
+        """GET /api/v1/system/status returns database size when db_path is set."""
+        db_file = tmp_path / "test.db"
+        db_file.write_bytes(b"x" * 4096)
+        app.state.db_path = str(db_file)
+
+        response = authenticated_client.get("/api/v1/system/status")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["database_size_bytes"] == 4096
+
+
 class TestStatsRoutesRequireAuth:
     """Tests for authentication requirement on stats routes."""
 

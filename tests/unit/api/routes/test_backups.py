@@ -212,6 +212,126 @@ class TestCreateBackup:
         assert backup.type == "manual"
 
 
+class TestCreateBackupErrors:
+    """Tests for error handling in POST /api/v1/backup."""
+
+    @patch("taggarr.api.routes.backups.create_backup")
+    def test_create_backup_file_not_found(
+        self, mock_create_backup, authenticated_client, tmp_path
+    ) -> None:
+        """POST /api/v1/backup returns 500 when database file is missing."""
+        mock_create_backup.side_effect = FileNotFoundError("taggarr.db not found")
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
+
+        response = authenticated_client.post("/api/v1/backup")
+
+        assert response.status_code == 500
+        assert "not found" in response.json()["detail"]
+
+    @patch("taggarr.api.routes.backups.create_backup")
+    def test_create_backup_os_error(
+        self, mock_create_backup, authenticated_client, tmp_path
+    ) -> None:
+        """POST /api/v1/backup returns 500 on disk error."""
+        mock_create_backup.side_effect = OSError("Disk full")
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
+
+        response = authenticated_client.post("/api/v1/backup")
+
+        assert response.status_code == 500
+        assert "Backup creation failed" in response.json()["detail"]
+
+    @patch("taggarr.api.routes.backups.create_backup")
+    def test_create_backup_uses_config_fallback(
+        self, mock_create_backup, authenticated_client, db_session: Session, tmp_path
+    ) -> None:
+        """POST /api/v1/backup falls back to Config table when no app state."""
+        from taggarr.db.models import Config as ConfigModel
+
+        db_session.add(ConfigModel(key="db.path", value=str(tmp_path / "custom.db")))
+        db_session.commit()
+
+        mock_create_backup.return_value = (str(tmp_path / "backup.zip"), 512)
+
+        # Don't set app.state.db_path - force fallback
+        response = authenticated_client.post("/api/v1/backup")
+
+        assert response.status_code == 201
+
+
+class TestRestoreBackupErrors:
+    """Tests for error handling in POST /api/v1/backup/{id}/restore."""
+
+    @patch("taggarr.api.routes.backups.restore_backup")
+    def test_restore_backup_file_not_found(
+        self, mock_restore, authenticated_client, db_session: Session, tmp_path
+    ) -> None:
+        """POST /api/v1/backup/{id}/restore returns 404 on FileNotFoundError."""
+        backup_file = tmp_path / "backup.zip"
+        backup_file.write_bytes(b"PK\x03\x04test")
+        backup = create_backup_in_db(db_session, path=str(backup_file))
+
+        mock_restore.side_effect = FileNotFoundError("File not found")
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
+
+        response = authenticated_client.post(f"/api/v1/backup/{backup.id}/restore")
+
+        assert response.status_code == 404
+
+    @patch("taggarr.api.routes.backups.restore_backup")
+    def test_restore_backup_value_error(
+        self, mock_restore, authenticated_client, db_session: Session, tmp_path
+    ) -> None:
+        """POST /api/v1/backup/{id}/restore returns 400 on ValueError."""
+        backup_file = tmp_path / "backup.zip"
+        backup_file.write_bytes(b"PK\x03\x04test")
+        backup = create_backup_in_db(db_session, path=str(backup_file))
+
+        mock_restore.side_effect = ValueError("Invalid backup format")
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
+
+        response = authenticated_client.post(f"/api/v1/backup/{backup.id}/restore")
+
+        assert response.status_code == 400
+
+    @patch("taggarr.api.routes.backups.restore_backup")
+    def test_restore_backup_os_error(
+        self, mock_restore, authenticated_client, db_session: Session, tmp_path
+    ) -> None:
+        """POST /api/v1/backup/{id}/restore returns 500 on OSError."""
+        backup_file = tmp_path / "backup.zip"
+        backup_file.write_bytes(b"PK\x03\x04test")
+        backup = create_backup_in_db(db_session, path=str(backup_file))
+
+        mock_restore.side_effect = OSError("Disk error")
+        authenticated_client.app.state.db_path = tmp_path / "taggarr.db"
+
+        response = authenticated_client.post(f"/api/v1/backup/{backup.id}/restore")
+
+        assert response.status_code == 500
+
+    @patch("taggarr.api.routes.backups.restore_backup")
+    def test_restore_backup_uses_config_fallback(
+        self, mock_restore, authenticated_client, db_session: Session, tmp_path
+    ) -> None:
+        """POST /api/v1/backup/{id}/restore falls back to Config table."""
+        from taggarr.db.models import Config as ConfigModel
+
+        db_session.add(ConfigModel(key="db.path", value=str(tmp_path / "custom.db")))
+        db_session.commit()
+
+        backup_file = tmp_path / "backup.zip"
+        backup_file.write_bytes(b"PK\x03\x04test")
+        backup = create_backup_in_db(db_session, path=str(backup_file))
+
+        mock_restore.return_value = None
+
+        # Don't set app.state.db_path - force fallback
+        response = authenticated_client.post(f"/api/v1/backup/{backup.id}/restore")
+
+        assert response.status_code == 200
+
+
 class TestDeleteBackup:
     """Tests for DELETE /api/v1/backup/{id} endpoint."""
 

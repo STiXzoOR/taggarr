@@ -2,9 +2,11 @@
 
 import logging
 import pytest
+import requests
 import responses
 
 from taggarr.services.sonarr import SonarrClient
+from taggarr.exceptions import ApiTransientError, ApiPermanentError
 
 
 @pytest.fixture
@@ -74,8 +76,25 @@ class TestGetSeriesByPath:
         assert result is None
 
     @responses.activate
-    def test_matches_by_basename(self, client):
-        """Test that matching is done by folder basename, not full path."""
+    def test_matches_by_full_path_first(self, client):
+        """Test that full path matching takes priority over basename."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series",
+            json=[
+                {"id": 1, "title": "Show A", "path": "/other/root/Show"},
+                {"id": 2, "title": "Show B", "path": "/media/tv/Show"},
+            ],
+        )
+
+        result = client.get_series_by_path("/media/tv/Show")
+
+        assert result is not None
+        assert result["id"] == 2
+
+    @responses.activate
+    def test_falls_back_to_basename(self, client):
+        """Test basename fallback when full path doesn't match."""
         responses.add(
             responses.GET,
             "http://sonarr:8989/api/v3/series",
@@ -88,6 +107,21 @@ class TestGetSeriesByPath:
 
         assert result is not None
         assert result["id"] == 1
+
+    @responses.activate
+    def test_uses_cache_on_second_call(self, client):
+        """Test that media list is cached across calls."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series",
+            json=[{"id": 1, "title": "Test", "path": "/media/tv/Test"}],
+        )
+
+        client.get_series_by_path("/media/tv/Test")
+        client.get_series_by_path("/media/tv/Test")
+
+        # Only one API call should be made
+        assert len(responses.calls) == 1
 
 
 class TestGetSeriesId:
@@ -188,8 +222,8 @@ class TestAddTag:
         assert len([c for c in responses.calls if c.request.method == "POST"]) == 0
 
     @responses.activate
-    def test_does_not_add_duplicate_tag(self, client):
-        """Test that tag is not added if series already has it."""
+    def test_does_not_modify_when_tag_already_present(self, client):
+        """Test that no PUT is made if series already has the tag."""
         responses.add(
             responses.GET,
             "http://sonarr:8989/api/v3/tag",
@@ -198,19 +232,14 @@ class TestAddTag:
         responses.add(
             responses.GET,
             "http://sonarr:8989/api/v3/series/42",
-            json={"id": 42, "title": "Test", "tags": [5]},  # Already has tag
-        )
-        responses.add(
-            responses.PUT,
-            "http://sonarr:8989/api/v3/series/42",
             json={"id": 42, "title": "Test", "tags": [5]},
         )
 
         client.add_tag(42, "dub")
 
-        # PUT should still be called but tag list unchanged
+        # No PUT should be made since tag already exists
         put_calls = [c for c in responses.calls if c.request.method == "PUT"]
-        assert len(put_calls) == 1
+        assert len(put_calls) == 0
 
 
 class TestRemoveTag:
@@ -252,8 +281,11 @@ class TestRemoveTag:
             json=[],
         )
 
-        # Should not throw
+        # Should not throw - and should not try to GET/PUT the series
         client.remove_tag(42, "nonexistent")
+
+        # Only the tag lookup should happen
+        assert len(responses.calls) == 1
 
     def test_dry_run_does_not_call_api(self, client, caplog):
         caplog.set_level(logging.INFO)
@@ -289,7 +321,7 @@ class TestRefreshSeries:
         responses.add(
             responses.POST,
             "http://sonarr:8989/api/v3/command",
-            body=Exception("Connection refused"),
+            body=requests.ConnectionError("Connection refused"),
         )
 
         # Should not raise
@@ -353,37 +385,203 @@ class TestGetTagId:
         assert result is None
 
 
-class TestModifySeriesTags:
-    """Tests for _modify_series_tags method."""
+class TestApplyTagChanges:
+    """Tests for apply_tag_changes method (atomic tag operations)."""
 
     @responses.activate
-    def test_handles_api_error(self, client, caplog):
+    def test_adds_and_removes_in_single_put(self, client):
+        """Verify atomic: one GET + one PUT regardless of tag count."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/tag",
+            json=[{"id": 1, "label": "dub"}, {"id": 2, "label": "semi-dub"}, {"id": 3, "label": "wrong-dub"}],
+        )
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series/42",
+            json={"id": 42, "tags": [2]},
+        )
+        responses.add(
+            responses.PUT,
+            "http://sonarr:8989/api/v3/series/42",
+            json={"id": 42, "tags": [1]},
+        )
+
+        client.apply_tag_changes(42, add_tags=["dub"], remove_tags=["semi-dub", "wrong-dub"])
+
+        put_calls = [c for c in responses.calls if c.request.method == "PUT"]
+        assert len(put_calls) == 1
+
+    @responses.activate
+    def test_skips_put_when_no_changes(self, client):
+        """No PUT if resulting tags are the same."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/tag",
+            json=[{"id": 1, "label": "dub"}],
+        )
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series/42",
+            json={"id": 42, "tags": [1]},
+        )
+
+        client.apply_tag_changes(42, add_tags=["dub"], remove_tags=["nonexistent"])
+
+        put_calls = [c for c in responses.calls if c.request.method == "PUT"]
+        assert len(put_calls) == 0
+
+    @responses.activate
+    def test_handles_api_error_on_get(self, client, caplog):
+        """API errors during GET propagate."""
         caplog.set_level(logging.WARNING)
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/tag",
+            json=[{"id": 1, "label": "dub"}],
+        )
         responses.add(
             responses.GET,
             "http://sonarr:8989/api/v3/series/42",
             status=500,
         )
 
-        # Should not raise
-        client._modify_series_tags(42, 1, remove=False)
+        with pytest.raises(ApiTransientError):
+            client.apply_tag_changes(42, add_tags=["dub"])
 
-        assert "Failed to modify" in caplog.text
+    def test_returns_early_when_no_tags(self, client):
+        """No API calls when both add_tags and remove_tags are empty."""
+        client.apply_tag_changes(42, add_tags=[], remove_tags=[])
+        # No responses mocked - would fail if any API call was made
+
+    def test_dry_run_logs_add_and_remove(self, client, caplog):
+        """Dry run logs both add and remove operations."""
+        caplog.set_level(logging.INFO)
+        client.apply_tag_changes(42, add_tags=["dub"], remove_tags=["wrong-dub"], dry_run=True)
+        assert "Dry Run" in caplog.text
+        assert "add" in caplog.text.lower()
+        assert "remove" in caplog.text.lower()
 
     @responses.activate
-    def test_removes_tag_when_present(self, client):
+    def test_creates_tag_if_not_exists(self, client):
+        """Tag is created via POST when it doesn't exist."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/tag",
+            json=[],
+        )
+        responses.add(
+            responses.POST,
+            "http://sonarr:8989/api/v3/tag",
+            json={"id": 10, "label": "new-tag"},
+        )
         responses.add(
             responses.GET,
             "http://sonarr:8989/api/v3/series/42",
-            json={"id": 42, "tags": [1, 2, 3]},
+            json={"id": 42, "tags": []},
         )
         responses.add(
             responses.PUT,
             "http://sonarr:8989/api/v3/series/42",
-            json={"id": 42, "tags": [1, 3]},
+            json={"id": 42, "tags": [10]},
         )
 
-        client._modify_series_tags(42, 2, remove=True)
+        client.apply_tag_changes(42, add_tags=["new-tag"])
 
-        put_calls = [c for c in responses.calls if c.request.method == "PUT"]
-        assert len(put_calls) == 1
+        post_calls = [c for c in responses.calls if c.request.method == "POST"]
+        assert len(post_calls) == 1
+
+
+class TestBaseClientRequest:
+    """Tests for BaseArrClient._request error handling."""
+
+    @responses.activate
+    def test_timeout_raises_transient_error(self, client):
+        """Timeout should raise ApiTransientError."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series",
+            body=requests.Timeout("timed out"),
+        )
+
+        with pytest.raises(ApiTransientError, match="timed out"):
+            client._request("GET", "/api/v3/series")
+
+    @responses.activate
+    def test_4xx_raises_permanent_error(self, client):
+        """4xx HTTP errors should raise ApiPermanentError."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series",
+            status=404,
+        )
+
+        with pytest.raises(ApiPermanentError, match="client error"):
+            client._request("GET", "/api/v3/series")
+
+    @responses.activate
+    def test_retries_on_transient_error_then_succeeds(self, client):
+        """Transient errors are retried and succeed on subsequent attempt."""
+        # First call: 500 error (transient)
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series",
+            status=500,
+        )
+        # Second call: success
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series",
+            json=[{"id": 1}],
+            status=200,
+        )
+
+        result = client._request("GET", "/api/v3/series")
+
+        assert result.json() == [{"id": 1}]
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_does_not_retry_permanent_errors(self, client):
+        """Permanent errors (4xx) are not retried."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series",
+            status=404,
+        )
+
+        with pytest.raises(ApiPermanentError):
+            client._request("GET", "/api/v3/series")
+
+        assert len(responses.calls) == 1
+
+    @responses.activate
+    def test_tag_creation_failure_raises_permanent_error(self, client):
+        """Failed tag creation should raise ApiPermanentError."""
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/tag",
+            json=[],
+        )
+        responses.add(
+            responses.POST,
+            "http://sonarr:8989/api/v3/tag",
+            status=500,
+        )
+
+        with pytest.raises(ApiPermanentError, match="Failed to create tag"):
+            client._get_or_create_tag("new-tag")
+
+
+class TestClearCache:
+    """Tests for clear_cache method."""
+
+    def test_clears_both_caches(self, client):
+        """clear_cache should reset media and tag caches."""
+        client._media_cache = [{"id": 1}]
+        client._tag_cache = [{"id": 1, "label": "dub"}]
+
+        client.clear_cache()
+
+        assert client._media_cache is None
+        assert client._tag_cache is None

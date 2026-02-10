@@ -142,3 +142,50 @@ class TestCompactLists:
         raw = '{\n  "name": "test",\n  "value": 123\n}'
         result = json_store._compact_lists(raw)
         assert result == raw
+
+
+class TestCleanupOrphans:
+    """Tests for cleanup_orphans function."""
+
+    def test_removes_orphaned_entries(self, caplog):
+        caplog.set_level(logging.INFO)
+        data = {"series": {
+            "/tv/show_a": {"tag": "dub"},
+            "/tv/show_b": {"tag": "none"},
+        }}
+        valid_paths = {"/tv/show_a"}
+
+        removed = json_store.cleanup_orphans(data, "series", valid_paths)
+
+        assert removed == 1
+        assert "/tv/show_a" in data["series"]
+        assert "/tv/show_b" not in data["series"]
+        assert "orphaned" in caplog.text
+
+    def test_returns_zero_when_no_orphans(self):
+        data = {"series": {"/tv/show_a": {"tag": "dub"}}}
+        valid_paths = {"/tv/show_a"}
+
+        removed = json_store.cleanup_orphans(data, "series", valid_paths)
+
+        assert removed == 0
+
+    def test_handles_empty_data(self):
+        data = {"series": {}}
+        valid_paths = {"/tv/show_a"}
+
+        removed = json_store.cleanup_orphans(data, "series", valid_paths)
+
+        assert removed == 0
+
+    def test_works_with_movies_key(self):
+        data = {"movies": {
+            "/movies/a": {"tag": "dub"},
+            "/movies/b": {"tag": "dub"},
+        }}
+        valid_paths = set()
+
+        removed = json_store.cleanup_orphans(data, "movies", valid_paths)
+
+        assert removed == 2
+        assert data["movies"] == {}

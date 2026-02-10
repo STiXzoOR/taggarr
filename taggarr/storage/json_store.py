@@ -25,7 +25,7 @@ def load(json_path, key="series"):
             data = json.load(f)
             logger.debug(f"Loaded taggarr.json with {len(data.get(key, {}))} entries.")
             return data
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, KeyError, ValueError) as e:
         logger.warning(f"taggarr.json is corrupted: {e}")
         backup_path = json_path + ".bak"
         os.rename(json_path, backup_path)
@@ -49,8 +49,27 @@ def save(json_path, data, key="series"):
         with open(json_path, 'w') as f:
             f.write(compact_json)
         logger.debug("taggarr.json saved successfully.")
-    except Exception as e:
+    except (OSError, TypeError, ValueError) as e:
         logger.warning(f"Failed to save taggarr.json: {e}")
+
+
+def cleanup_orphans(data, key, valid_paths):
+    """Remove entries whose paths no longer exist on disk.
+
+    Args:
+        data: The taggarr data dict (e.g. {"series": {...}} or {"movies": {...}})
+        key: The top-level key ("series" or "movies")
+        valid_paths: Set of paths that currently exist
+
+    Returns:
+        Number of orphaned entries removed.
+    """
+    entries = data.get(key, {})
+    orphans = [path for path in entries if path not in valid_paths]
+    for path in orphans:
+        logger.info(f"Removing orphaned entry: {path}")
+        del entries[path]
+    return len(orphans)
 
 
 def _compact_lists(raw_json):

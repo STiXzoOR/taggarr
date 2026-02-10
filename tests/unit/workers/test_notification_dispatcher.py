@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -306,3 +307,52 @@ class TestNotificationEventEnum:
         assert NotificationEvent.WRONG_DUB.value == "wrong_dub"
         assert NotificationEvent.ORIGINAL_MISSING.value == "original_missing"
         assert NotificationEvent.HEALTH_WARNING.value == "health_warning"
+
+
+class TestSendMethod:
+    """Tests for NotificationDispatcher._send method."""
+
+    def test_send_success_logs_info(self, dispatcher, caplog) -> None:
+        """_send logs success message when provider.send succeeds."""
+        import logging
+        caplog.set_level(logging.INFO)
+
+        notification = MagicMock(implementation="webhook", settings="{}")
+
+        mock_provider = MagicMock()
+        mock_provider.return_value.send = AsyncMock()
+
+        with patch("taggarr.workers.notification_dispatcher.get_provider", return_value=mock_provider):
+            dispatcher._send(notification, "Test Title", "Test Message")
+
+        assert "Notification sent via webhook" in caplog.text
+
+    def test_send_generic_exception_logs_error(self, dispatcher, caplog) -> None:
+        """_send logs error on generic exception."""
+        import logging
+        caplog.set_level(logging.ERROR)
+
+        notification = MagicMock(implementation="webhook", settings="{}")
+
+        mock_provider = MagicMock()
+        mock_provider.return_value.send = AsyncMock(side_effect=RuntimeError("Connection failed"))
+
+        with patch("taggarr.workers.notification_dispatcher.get_provider", return_value=mock_provider):
+            dispatcher._send(notification, "Test Title", "Test Message")
+
+        assert "Failed to send notification via webhook" in caplog.text
+
+    def test_send_value_error_logs_provider_error(self, dispatcher, caplog) -> None:
+        """_send logs provider error on ValueError."""
+        import logging
+        caplog.set_level(logging.ERROR)
+
+        notification = MagicMock(implementation="webhook", settings="{}")
+
+        mock_provider = MagicMock()
+        mock_provider.return_value.send = AsyncMock(side_effect=ValueError("Bad config"))
+
+        with patch("taggarr.workers.notification_dispatcher.get_provider", return_value=mock_provider):
+            dispatcher._send(notification, "Test Title", "Test Message")
+
+        assert "Notification provider error" in caplog.text

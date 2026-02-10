@@ -181,6 +181,28 @@ class TestBackupHandlerExecute:
             assert str(call_args[0][0]) == "taggarr.db"  # default db_path
             assert str(call_args[0][1]) == "backups"  # default backup_dir
 
+    def test_execute_uses_db_path_from_config_table(
+        self, handler, session_factory, tmp_path
+    ) -> None:
+        """execute() reads db_path from Config table when not provided."""
+        from taggarr.db.models import Config as ConfigModel
+
+        # Insert a Config record for db.path
+        with session_factory() as session:
+            session.add(ConfigModel(key="db.path", value=str(tmp_path / "custom.db")))
+            session.commit()
+
+        with patch(
+            "taggarr.backup.operations.create_backup"
+        ) as mock_create:
+            mock_create.return_value = ("./backups/backup.zip", 256)
+
+            run_async(handler.execute())
+
+            # Verify it used the config value, not the default
+            call_args = mock_create.call_args
+            assert str(call_args[0][0]) == str(tmp_path / "custom.db")
+
     def test_execute_logs_success(
         self, handler, session_factory, tmp_path, caplog
     ) -> None:

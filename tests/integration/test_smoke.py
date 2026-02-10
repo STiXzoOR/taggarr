@@ -130,6 +130,13 @@ class TestEndToEndSonarr:
             json=[{"id": 1, "label": "dub"}],
             status=200,
         )
+        # Mock individual series GET for apply_tag_changes
+        responses.add(
+            responses.GET,
+            "http://sonarr:8989/api/v3/series/1",
+            json={"id": 1, "tags": []},
+            status=200,
+        )
         responses.add(
             responses.PUT,
             "http://sonarr:8989/api/v3/series/1",
@@ -190,6 +197,13 @@ class TestEndToEndRadarr:
             responses.GET,
             "http://radarr:7878/api/v3/tag",
             json=[{"id": 1, "label": "dub"}],
+            status=200,
+        )
+        # Mock individual movie GET for apply_tag_changes
+        responses.add(
+            responses.GET,
+            "http://radarr:7878/api/v3/movie/1",
+            json={"id": 1, "tags": []},
             status=200,
         )
         responses.add(

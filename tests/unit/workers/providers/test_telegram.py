@@ -119,3 +119,16 @@ class TestTelegramProviderTest:
 
             assert success is False
             assert "Unexpected" in message
+
+    def test_test_returns_failure_on_http_error(self, provider) -> None:
+        """test() returns failure tuple on httpx.HTTPError."""
+        import httpx
+        with patch.object(
+            provider, "send",
+            new=AsyncMock(side_effect=httpx.HTTPError("Connection refused")),
+        ):
+            success, message = run_async(
+                provider.test({"bot_token": "abc", "chat_id": "123"})
+            )
+            assert success is False
+            assert "Telegram API failed" in message

@@ -17,7 +17,7 @@ def get_aliases(code_or_name):
             or pycountry.languages.get(alpha_3=code_or_name)
             or pycountry.languages.lookup(code_or_name)
         )
-    except Exception:
+    except LookupError:
         return aliases
 
     if lang:
@@ -39,7 +39,7 @@ def get_primary_code(lang):
     try:
         result = pycountry.languages.get(name=lang) or pycountry.languages.lookup(lang)
         return result.alpha_2.lower()
-    except Exception:
+    except (LookupError, AttributeError):
         return lang.lower()[:2]
 
 

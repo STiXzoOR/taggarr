@@ -469,6 +469,88 @@ class TestTestNotification:
         assert "Unknown implementation" in data["message"]
 
 
+class TestTestNotificationErrors:
+    """Tests for error handling in POST /api/v1/notification/test."""
+
+    @patch("taggarr.api.routes.notifications.get_provider")
+    def test_test_notification_value_error_from_provider(
+        self, mock_get_provider, authenticated_client
+    ) -> None:
+        """POST /api/v1/notification/test returns failure on ValueError from provider."""
+        mock_provider = AsyncMock()
+        mock_provider.test.side_effect = ValueError("Invalid webhook URL")
+        mock_get_provider.return_value = lambda: mock_provider
+
+        response = authenticated_client.post(
+            "/api/v1/notification/test",
+            json={
+                "implementation": "discord",
+                "settings": {"webhook_url": "bad"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Invalid webhook URL" in data["message"]
+
+    @patch("taggarr.api.routes.notifications.get_provider")
+    def test_test_notification_generic_exception(
+        self, mock_get_provider, authenticated_client
+    ) -> None:
+        """POST /api/v1/notification/test returns failure on generic exception."""
+        mock_provider = AsyncMock()
+        mock_provider.test.side_effect = RuntimeError("Connection timeout")
+        mock_get_provider.return_value = lambda: mock_provider
+
+        response = authenticated_client.post(
+            "/api/v1/notification/test",
+            json={
+                "implementation": "discord",
+                "settings": {"webhook_url": "https://discord.com/api/webhooks/123"},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Test failed" in data["message"]
+
+
+class TestNotificationResponseParsing:
+    """Tests for notification response model field validators."""
+
+    def test_settings_returned_as_dict(
+        self, authenticated_client, db_session: Session
+    ) -> None:
+        """Notification settings JSON string is parsed to dict in response."""
+        notification = create_notification_in_db(
+            db_session,
+            settings=json.dumps({"webhook_url": "https://test.com"}),
+        )
+
+        response = authenticated_client.get(f"/api/v1/notification/{notification.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data["settings"], dict)
+
+    def test_tags_returned_as_list(
+        self, authenticated_client, db_session: Session
+    ) -> None:
+        """Notification tags JSON string is parsed to list in response."""
+        notification = create_notification_in_db(
+            db_session,
+            tags=json.dumps(["dub", "wrong-dub"]),
+        )
+
+        response = authenticated_client.get(f"/api/v1/notification/{notification.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data["tags"], list)
+
+
 class TestNotificationAuthRequired:
     """Tests for authentication requirement on notification routes."""
 
