@@ -189,3 +189,66 @@ class TestCleanupOrphans:
 
         assert removed == 2
         assert data["movies"] == {}
+
+
+class TestCleanupOrphansForRoot:
+    """Tests for cleanup_orphans_for_root function."""
+
+    def test_removes_orphans_from_root(self, tmp_path, caplog):
+        caplog.set_level(logging.INFO)
+        # Create one directory on disk
+        (tmp_path / "show_a").mkdir()
+        # Data has two entries, one is orphaned
+        show_a_path = str(tmp_path / "show_a")
+        data = {"series": {
+            show_a_path: {"tag": "dub"},
+            "/nonexistent/show_b": {"tag": "none"},
+        }}
+
+        removed = json_store.cleanup_orphans_for_root(data, "series", str(tmp_path))
+
+        assert removed == 1
+        assert show_a_path in data["series"]
+        assert "/nonexistent/show_b" not in data["series"]
+
+    def test_returns_zero_on_oserror(self, tmp_path, caplog):
+        caplog.set_level(logging.WARNING)
+        data = {"series": {"/tv/show_a": {"tag": "dub"}}}
+
+        removed = json_store.cleanup_orphans_for_root(data, "series", "/nonexistent/root")
+
+        assert removed == 0
+        assert "Could not list" in caplog.text
+        # Data should be preserved (not lost)
+        assert "/tv/show_a" in data["series"]
+
+    def test_returns_zero_when_no_orphans(self, tmp_path):
+        show_path = str(tmp_path / "show_a")
+        (tmp_path / "show_a").mkdir()
+        data = {"series": {show_path: {"tag": "dub"}}}
+
+        removed = json_store.cleanup_orphans_for_root(data, "series", str(tmp_path))
+
+        assert removed == 0
+
+
+class TestAtomicSave:
+    """Tests for atomic save using write-to-temp-then-rename."""
+
+    def test_no_tmp_file_after_save(self, tmp_path):
+        json_path = tmp_path / "taggarr.json"
+        data = {"series": {"show": {"tag": "dub"}}}
+
+        json_store.save(str(json_path), data)
+
+        assert json_path.exists()
+        assert not (tmp_path / "taggarr.json.tmp").exists()
+
+    def test_save_is_valid_json(self, tmp_path):
+        json_path = tmp_path / "taggarr.json"
+        data = {"series": {"show": {"tag": "dub"}}}
+
+        json_store.save(str(json_path), data)
+
+        loaded = json.loads(json_path.read_text())
+        assert loaded["series"]["show"]["tag"] == "dub"

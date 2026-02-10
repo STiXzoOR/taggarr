@@ -21,11 +21,3 @@ class ApiTransientError(ApiError):
 
 class ApiPermanentError(ApiError):
     """Non-retryable API errors: 4xx, auth failures."""
-
-
-class MediaAnalysisError(TaggarrError):
-    """Failure during mediainfo analysis."""
-
-
-class StorageError(TaggarrError):
-    """Failure during JSON or DB persistence."""

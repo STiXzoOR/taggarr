@@ -34,7 +34,10 @@ def load(json_path, key="series"):
 
 
 def save(json_path, data, key="series"):
-    """Save taggarr.json with compacted formatting."""
+    """Save taggarr.json with compacted formatting.
+
+    Uses write-to-temp-then-rename to avoid partial writes on crash.
+    """
     if not json_path:
         return
 
@@ -46,8 +49,12 @@ def save(json_path, data, key="series"):
         raw_json = json.dumps(ordered, indent=2, ensure_ascii=False)
         compact_json = _compact_lists(raw_json)
 
-        with open(json_path, 'w') as f:
+        tmp_path = json_path + ".tmp"
+        with open(tmp_path, 'w') as f:
             f.write(compact_json)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, json_path)
         logger.debug("taggarr.json saved successfully.")
     except (OSError, TypeError, ValueError) as e:
         logger.warning(f"Failed to save taggarr.json: {e}")
@@ -70,6 +77,27 @@ def cleanup_orphans(data, key, valid_paths):
         logger.info(f"Removing orphaned entry: {path}")
         del entries[path]
     return len(orphans)
+
+
+def cleanup_orphans_for_root(data, key, root_path):
+    """Gather current paths from root_path and remove orphaned entries.
+
+    Wraps os.listdir in error handling so a temporary mount failure
+    does not prevent the caller from saving scan progress.
+
+    Returns:
+        Number of orphaned entries removed, or 0 if listing failed.
+    """
+    try:
+        current_paths = set()
+        for entry in os.listdir(root_path):
+            path = os.path.abspath(os.path.join(root_path, entry))
+            if os.path.isdir(path):
+                current_paths.add(path)
+    except OSError as e:
+        logger.warning(f"Could not list {root_path} for orphan cleanup: {e}")
+        return 0
+    return cleanup_orphans(data, key, current_paths)
 
 
 def _compact_lists(raw_json):

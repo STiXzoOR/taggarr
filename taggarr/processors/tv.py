@@ -10,6 +10,7 @@ from typing import Dict, Optional, Tuple
 
 from taggarr.config_schema import InstanceConfig
 from taggarr.services.sonarr import SonarrClient
+from taggarr.services.media import VIDEO_EXTENSIONS
 from taggarr.services import media
 from taggarr.storage import json_store
 from taggarr import nfo, languages
@@ -101,12 +102,7 @@ def process_all(client: SonarrClient, instance: InstanceConfig, opts, taggarr_da
             client.refresh_series(series_id, dry_run)
 
     # Cleanup orphaned entries
-    current_paths = set()
-    for entry in os.listdir(instance.root_path):
-        path = os.path.abspath(os.path.join(instance.root_path, entry))
-        if os.path.isdir(path):
-            current_paths.add(path)
-    removed = json_store.cleanup_orphans(taggarr_data, "series", current_paths)
+    removed = json_store.cleanup_orphans_for_root(taggarr_data, "series", instance.root_path)
     if removed:
         logger.info(f"Cleaned up {removed} orphaned series entries")
 
@@ -148,10 +144,9 @@ def _scan_show(show_path: str, series_meta: dict, instance: InstanceConfig,
 def _scan_season(season_path: str, series_meta: dict, instance: InstanceConfig,
                  language_codes: set, quick: bool = False) -> dict:
     """Scan episodes in a season folder."""
-    video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     files = sorted([
         f for f in os.listdir(season_path)
-        if os.path.splitext(f)[1].lower() in video_exts
+        if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS
     ])
     if quick and files:
         files = [files[0]]
@@ -252,7 +247,7 @@ def _passes_genre_filter(nfo_path: str, target_genre: Optional[str]) -> bool:
 
 def _apply_tags(client: SonarrClient, series_id: int, tag: Optional[str],
                 instance: InstanceConfig, dry_run: bool) -> None:
-    """Apply appropriate tags and remove conflicting ones atomically."""
+    """Apply appropriate tags and remove conflicting ones in a single batched operation."""
     all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
 
     if tag:

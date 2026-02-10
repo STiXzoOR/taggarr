@@ -9,6 +9,7 @@ from typing import Dict, Optional
 
 from taggarr.config_schema import InstanceConfig
 from taggarr.services.radarr import RadarrClient
+from taggarr.services.media import VIDEO_EXTENSIONS
 from taggarr.services import media
 from taggarr.storage import json_store
 from taggarr import nfo, languages
@@ -43,7 +44,7 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
             current_mtime = max(
                 os.path.getmtime(os.path.join(root, f))
                 for root, dirs, files in os.walk(movie_path)
-                for f in files if f.endswith(('.mkv', '.mp4', '.m4v', '.avi'))
+                for f in files if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS
             )
         except ValueError:
             current_mtime = 0
@@ -98,7 +99,7 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         tag = _determine_tag(scan_result, instance, language_codes)
         logger.info(f"Tagged as {tag or 'no tag (original)'}")
 
-        # Apply tags to Radarr atomically
+        # Apply tags to Radarr in a single batched operation
         all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
         if tag:
             add_tags = [tag]
@@ -124,12 +125,7 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         }
 
     # Cleanup orphaned entries
-    current_paths = set()
-    for entry in os.listdir(instance.root_path):
-        path = os.path.abspath(os.path.join(instance.root_path, entry))
-        if os.path.isdir(path):
-            current_paths.add(path)
-    removed = json_store.cleanup_orphans(taggarr_movies, "movies", current_paths)
+    removed = json_store.cleanup_orphans_for_root(taggarr_movies, "movies", instance.root_path)
     if removed:
         logger.info(f"Cleaned up {removed} orphaned movie entries")
 
@@ -139,7 +135,6 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
 def _scan_movie(movie_path: str, movie_meta: dict, instance: InstanceConfig,
                 language_codes: set) -> Optional[Dict]:
     """Scan a movie folder and return language analysis."""
-    video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     ignore_patterns = ['-sample', 'sample.', 'extras', 'featurettes', 'behind the scenes', 'deleted scenes']
 
     # Find all video files
@@ -147,7 +142,7 @@ def _scan_movie(movie_path: str, movie_meta: dict, instance: InstanceConfig,
     for root, dirs, files in os.walk(movie_path):
         dirs[:] = [d for d in dirs if not any(p in d.lower() for p in ignore_patterns)]
         for f in files:
-            if os.path.splitext(f)[1].lower() in video_exts:
+            if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS:
                 if any(p in f.lower() for p in ignore_patterns):
                     continue
                 full_path = os.path.join(root, f)

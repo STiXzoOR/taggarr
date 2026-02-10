@@ -6,7 +6,6 @@ import os
 import logging
 from typing import Dict, List, Optional
 
-from taggarr.exceptions import ApiTransientError, ApiPermanentError
 from taggarr.services.base_client import BaseArrClient
 
 logger = logging.getLogger("taggarr")

@@ -18,7 +18,6 @@ class BaseArrClient:
 
     # Subclasses set these
     _media_endpoint: str = ""       # e.g. "/api/v3/series" or "/api/v3/movie"
-    _media_id_field: str = "id"     # field name for entity ID
     _service_name: str = "arr"      # for log messages
 
     def __init__(self, url: str, api_key: str) -> None:
@@ -129,7 +128,7 @@ class BaseArrClient:
         self._tag_cache = None
 
     # ------------------------------------------------------------------
-    # Atomic tag operations
+    # Batched tag operations
     # ------------------------------------------------------------------
 
     def apply_tag_changes(
@@ -139,10 +138,15 @@ class BaseArrClient:
         remove_tags: Optional[List[str]] = None,
         dry_run: bool = False,
     ) -> None:
-        """Apply tag changes atomically: single GET, modify, single PUT.
+        """Apply tag changes in a single batched GET-modify-PUT cycle.
 
         Collects all tag IDs to add/remove, then does one GET of the media
         item, modifies its tag list, and one PUT back.
+
+        Note: This is NOT truly atomic. There is a TOCTOU window between
+        the GET and PUT where concurrent modifications by other clients
+        would be silently overwritten. This is inherent to the Sonarr/Radarr
+        API design (no ETag or conditional update support).
         """
         add_tags = add_tags or []
         remove_tags = remove_tags or []
@@ -197,14 +201,3 @@ class BaseArrClient:
         # Single PUT
         self._request("PUT", item_endpoint, json=item_data)
 
-    # ------------------------------------------------------------------
-    # Legacy wrappers (kept for backwards compatibility during transition)
-    # ------------------------------------------------------------------
-
-    def add_tag(self, media_id: int, tag: str, dry_run: bool = False) -> None:
-        """Add a single tag. Delegates to apply_tag_changes."""
-        self.apply_tag_changes(media_id, add_tags=[tag], dry_run=dry_run)
-
-    def remove_tag(self, media_id: int, tag: str, dry_run: bool = False) -> None:
-        """Remove a single tag. Delegates to apply_tag_changes."""
-        self.apply_tag_changes(media_id, remove_tags=[tag], dry_run=dry_run)

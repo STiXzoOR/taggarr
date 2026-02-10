@@ -171,76 +171,6 @@ class TestGetMovieByPath:
         assert result["id"] == 1
 
 
-class TestAddTag:
-    """Tests for add_tag method."""
-
-    @responses.activate
-    def test_adds_tag_to_movie(self, client):
-        responses.add(responses.GET, "http://radarr:7878/api/v3/tag", json=[])
-        responses.add(responses.POST, "http://radarr:7878/api/v3/tag", json={"id": 1, "label": "dub"})
-        responses.add(responses.GET, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": []})
-        responses.add(responses.PUT, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": [1]})
-
-        client.add_tag(42, "dub")
-
-        assert len([c for c in responses.calls if c.request.method == "PUT"]) == 1
-
-    def test_dry_run_does_not_call_api(self, client, caplog):
-        caplog.set_level(logging.INFO)
-        client.add_tag(42, "dub", dry_run=True)
-        assert "Dry Run" in caplog.text
-
-    @responses.activate
-    def test_uses_existing_tag_if_found(self, client):
-        responses.add(responses.GET, "http://radarr:7878/api/v3/tag", json=[{"id": 5, "label": "dub"}])
-        responses.add(responses.GET, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": []})
-        responses.add(responses.PUT, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": [5]})
-
-        client.add_tag(42, "dub")
-
-        # Should not have created a new tag
-        assert len([c for c in responses.calls if c.request.method == "POST"]) == 0
-
-    @responses.activate
-    def test_does_not_modify_when_tag_already_present(self, client):
-        """Test that no PUT is made if movie already has the tag."""
-        responses.add(responses.GET, "http://radarr:7878/api/v3/tag", json=[{"id": 5, "label": "dub"}])
-        responses.add(responses.GET, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": [5]})
-
-        client.add_tag(42, "dub")
-
-        put_calls = [c for c in responses.calls if c.request.method == "PUT"]
-        assert len(put_calls) == 0
-
-
-class TestRemoveTag:
-    """Tests for remove_tag method."""
-
-    @responses.activate
-    def test_removes_tag_from_movie(self, client):
-        responses.add(responses.GET, "http://radarr:7878/api/v3/tag", json=[{"id": 5, "label": "dub"}])
-        responses.add(responses.GET, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": [5]})
-        responses.add(responses.PUT, "http://radarr:7878/api/v3/movie/42", json={"id": 42, "tags": []})
-
-        client.remove_tag(42, "dub")
-
-        assert len([c for c in responses.calls if c.request.method == "PUT"]) == 1
-
-    @responses.activate
-    def test_does_nothing_if_tag_not_found(self, client):
-        responses.add(responses.GET, "http://radarr:7878/api/v3/tag", json=[])
-
-        client.remove_tag(42, "nonexistent")  # Should not raise
-
-        # Only the tag lookup should happen
-        assert len(responses.calls) == 1
-
-    def test_dry_run_does_not_call_api(self, client, caplog):
-        caplog.set_level(logging.INFO)
-        client.remove_tag(42, "dub", dry_run=True)
-        assert "Dry Run" in caplog.text
-
-
 class TestGetTagId:
     """Tests for _get_tag_id method."""
 
@@ -294,7 +224,7 @@ class TestGetTagId:
 
 
 class TestApplyTagChanges:
-    """Tests for apply_tag_changes method (atomic tag operations)."""
+    """Tests for apply_tag_changes method (batched tag operations)."""
 
     @responses.activate
     def test_adds_and_removes_in_single_put(self, client):

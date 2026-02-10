@@ -6,6 +6,8 @@ from pymediainfo import MediaInfo
 logger = logging.getLogger("taggarr")
 
 
+VIDEO_EXTENSIONS = frozenset({'.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf'})
+
 _COMMENTARY_KEYWORDS = {"commentary", "director", "isolated"}
 
 
