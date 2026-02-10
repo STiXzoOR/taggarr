@@ -392,7 +392,9 @@ class TestProcessAll:
 
         result = movies.process_all(client, instance, opts, taggarr_data)
 
-        assert client.remove_tag.call_count == 2
+        client.apply_tag_changes.assert_called_once_with(
+            42, remove_tags=["dub", "semi-dub", "wrong-dub"], dry_run=False
+        )
         # Should not fail even though movie wasn't in data
         assert str(movie_path) not in result["movies"]
 
@@ -429,7 +431,9 @@ class TestProcessAll:
 
         result = movies.process_all(client, instance, opts, taggarr_data)
 
-        assert client.remove_tag.call_count == 2
+        client.apply_tag_changes.assert_called_once_with(
+            42, remove_tags=["dub", "semi-dub", "wrong-dub"], dry_run=False
+        )
         assert str(movie_path) not in result["movies"]
 
     @patch("taggarr.processors.movies._scan_movie")
@@ -456,8 +460,9 @@ class TestProcessAll:
 
         result = movies.process_all(client, instance, opts, taggarr_data)
 
-        client.add_tag.assert_called_once_with(42, "dub", False)
-        client.remove_tag.assert_called_once_with(42, "wrong-dub", False)
+        client.apply_tag_changes.assert_called_once_with(
+            42, add_tags=["dub"], remove_tags=["semi-dub", "wrong-dub"], dry_run=False
+        )
 
     @patch("taggarr.processors.movies._scan_movie")
     @patch("taggarr.processors.movies._determine_tag")
@@ -483,8 +488,9 @@ class TestProcessAll:
 
         movies.process_all(client, instance, opts, taggarr_data)
 
-        client.add_tag.assert_called_once_with(42, "wrong-dub", False)
-        client.remove_tag.assert_called_once_with(42, "dub", False)
+        client.apply_tag_changes.assert_called_once_with(
+            42, add_tags=["wrong-dub"], remove_tags=["dub", "semi-dub"], dry_run=False
+        )
 
     @patch("taggarr.processors.movies._scan_movie")
     @patch("taggarr.processors.movies._determine_tag")
@@ -510,8 +516,9 @@ class TestProcessAll:
 
         movies.process_all(client, instance, opts, taggarr_data)
 
-        client.add_tag.assert_not_called()
-        assert client.remove_tag.call_count == 2
+        client.apply_tag_changes.assert_called_once_with(
+            42, add_tags=[], remove_tags=["dub", "semi-dub", "wrong-dub"], dry_run=False
+        )
 
     @patch("taggarr.processors.movies._scan_movie")
     def test_continues_when_scan_returns_none(self, mock_scan, tmp_path, instance):
@@ -529,7 +536,7 @@ class TestProcessAll:
 
         result = movies.process_all(client, instance, opts, taggarr_data)
 
-        client.add_tag.assert_not_called()
+        client.apply_tag_changes.assert_not_called()
         assert str(movie_path) not in result["movies"]
 
     @patch("taggarr.processors.movies._scan_movie")

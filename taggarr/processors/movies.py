@@ -1,13 +1,17 @@
 """Movie scanning and tagging processor."""
 
+from __future__ import annotations
+
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from taggarr.config_schema import InstanceConfig
 from taggarr.services.radarr import RadarrClient
+from taggarr.services.media import VIDEO_EXTENSIONS
 from taggarr.services import media
+from taggarr.storage import json_store
 from taggarr import nfo, languages
 
 logger = logging.getLogger("taggarr")
@@ -40,7 +44,7 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
             current_mtime = max(
                 os.path.getmtime(os.path.join(root, f))
                 for root, dirs, files in os.walk(movie_path)
-                for f in files if f.endswith(('.mkv', '.mp4', '.m4v', '.avi'))
+                for f in files if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS
             )
         except ValueError:
             current_mtime = 0
@@ -80,8 +84,8 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         # Handle remove mode
         if write_mode == 2:
             logger.info(f"Removing tags for {movie_folder}")
-            for tag in [instance.tags.dub, instance.tags.wrong]:
-                client.remove_tag(movie_id, tag, dry_run)
+            all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
+            client.apply_tag_changes(movie_id, remove_tags=all_tags, dry_run=dry_run)
             if movie_path in taggarr_movies["movies"]:
                 del taggarr_movies["movies"][movie_path]
             continue
@@ -95,16 +99,15 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         tag = _determine_tag(scan_result, instance, language_codes)
         logger.info(f"Tagged as {tag or 'no tag (original)'}")
 
-        # Apply tags to Radarr
+        # Apply tags to Radarr in a single batched operation
+        all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
         if tag:
-            client.add_tag(movie_id, tag, dry_run)
-            if tag == instance.tags.wrong:
-                client.remove_tag(movie_id, instance.tags.dub, dry_run)
-            elif tag == instance.tags.dub:
-                client.remove_tag(movie_id, instance.tags.wrong, dry_run)
+            add_tags = [tag]
+            remove_tags = [t for t in all_tags if t != tag]
         else:
-            for t in [instance.tags.dub, instance.tags.wrong]:
-                client.remove_tag(movie_id, t, dry_run)
+            add_tags = []
+            remove_tags = all_tags
+        client.apply_tag_changes(movie_id, add_tags=add_tags, remove_tags=remove_tags, dry_run=dry_run)
 
         # Update NFO if applicable
         nfo_path = _find_nfo(movie_path, movie_folder)
@@ -115,11 +118,16 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
         taggarr_movies["movies"][movie_path] = {
             "display_name": movie_folder,
             "tag": tag or "none",
-            "last_scan": datetime.utcnow().isoformat() + "Z",
+            "last_scan": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "original_language": scan_result["original_language"],
             "languages": scan_result["languages"],
             "last_modified": current_mtime,
         }
+
+    # Cleanup orphaned entries
+    removed = json_store.cleanup_orphans_for_root(taggarr_movies, "movies", instance.root_path)
+    if removed:
+        logger.info(f"Cleaned up {removed} orphaned movie entries")
 
     return taggarr_movies
 
@@ -127,7 +135,6 @@ def process_all(client: RadarrClient, instance: InstanceConfig, opts, taggarr_mo
 def _scan_movie(movie_path: str, movie_meta: dict, instance: InstanceConfig,
                 language_codes: set) -> Optional[Dict]:
     """Scan a movie folder and return language analysis."""
-    video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     ignore_patterns = ['-sample', 'sample.', 'extras', 'featurettes', 'behind the scenes', 'deleted scenes']
 
     # Find all video files
@@ -135,7 +142,7 @@ def _scan_movie(movie_path: str, movie_meta: dict, instance: InstanceConfig,
     for root, dirs, files in os.walk(movie_path):
         dirs[:] = [d for d in dirs if not any(p in d.lower() for p in ignore_patterns)]
         for f in files:
-            if os.path.splitext(f)[1].lower() in video_exts:
+            if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS:
                 if any(p in f.lower() for p in ignore_patterns):
                     continue
                 full_path = os.path.join(root, f)

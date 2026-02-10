@@ -1,14 +1,18 @@
 """TV show scanning and tagging processor."""
 
+from __future__ import annotations
+
 import os
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple
 
 from taggarr.config_schema import InstanceConfig
 from taggarr.services.sonarr import SonarrClient
+from taggarr.services.media import VIDEO_EXTENSIONS
 from taggarr.services import media
+from taggarr.storage import json_store
 from taggarr import nfo, languages
 
 logger = logging.getLogger("taggarr")
@@ -62,8 +66,8 @@ def process_all(client: SonarrClient, instance: InstanceConfig, opts, taggarr_da
         # Handle remove mode
         if write_mode == 2:
             logger.info(f"Removing tags for {show_folder}")
-            for tag in [instance.tags.dub, instance.tags.semi, instance.tags.wrong]:
-                client.remove_tag(series_id, tag, dry_run)
+            all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
+            client.apply_tag_changes(series_id, remove_tags=all_tags, dry_run=dry_run)
             if show_path in taggarr_data["series"]:
                 del taggarr_data["series"][show_path]
             continue
@@ -96,6 +100,11 @@ def process_all(client: SonarrClient, instance: InstanceConfig, opts, taggarr_da
         # Refresh if in rewrite mode
         if write_mode == 1:
             client.refresh_series(series_id, dry_run)
+
+    # Cleanup orphaned entries
+    removed = json_store.cleanup_orphans_for_root(taggarr_data, "series", instance.root_path)
+    if removed:
+        logger.info(f"Cleaned up {removed} orphaned series entries")
 
     return taggarr_data
 
@@ -135,10 +144,9 @@ def _scan_show(show_path: str, series_meta: dict, instance: InstanceConfig,
 def _scan_season(season_path: str, series_meta: dict, instance: InstanceConfig,
                  language_codes: set, quick: bool = False) -> dict:
     """Scan episodes in a season folder."""
-    video_exts = ['.mkv', '.mp4', '.m4v', '.avi', '.webm', '.mov', '.mxf']
     files = sorted([
         f for f in os.listdir(season_path)
-        if os.path.splitext(f)[1].lower() in video_exts
+        if os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS
     ])
     if quick and files:
         files = [files[0]]
@@ -239,22 +247,18 @@ def _passes_genre_filter(nfo_path: str, target_genre: Optional[str]) -> bool:
 
 def _apply_tags(client: SonarrClient, series_id: int, tag: Optional[str],
                 instance: InstanceConfig, dry_run: bool) -> None:
-    """Apply appropriate tags and remove conflicting ones."""
+    """Apply appropriate tags and remove conflicting ones in a single batched operation."""
+    all_tags = [instance.tags.dub, instance.tags.semi, instance.tags.wrong]
+
     if tag:
-        client.add_tag(series_id, tag, dry_run)
-        if tag == instance.tags.wrong:
-            client.remove_tag(series_id, instance.tags.semi, dry_run)
-            client.remove_tag(series_id, instance.tags.dub, dry_run)
-        elif tag == instance.tags.semi:
-            client.remove_tag(series_id, instance.tags.wrong, dry_run)
-            client.remove_tag(series_id, instance.tags.dub, dry_run)
-        elif tag == instance.tags.dub:
-            client.remove_tag(series_id, instance.tags.wrong, dry_run)
-            client.remove_tag(series_id, instance.tags.semi, dry_run)
+        add_tags = [tag]
+        remove_tags = [t for t in all_tags if t != tag]
     else:
         logger.info("Removing all tags since it's original (no tag)")
-        for t in [instance.tags.dub, instance.tags.semi, instance.tags.wrong]:
-            client.remove_tag(series_id, t, dry_run)
+        add_tags = []
+        remove_tags = all_tags
+
+    client.apply_tag_changes(series_id, add_tags=add_tags, remove_tags=remove_tags, dry_run=dry_run)
 
 
 def _determine_status(stats: dict) -> str:
@@ -280,7 +284,7 @@ def _build_entry(show_folder: str, tag: Optional[str], seasons: dict,
     return {
         "display_name": show_folder,
         "tag": tag or "none",
-        "last_scan": datetime.utcnow().isoformat() + "Z",
+        "last_scan": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "original_language": original_lang,
         "seasons": seasons,
         "last_modified": mtime,

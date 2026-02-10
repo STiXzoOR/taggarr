@@ -1,0 +1,153 @@
+/// <reference types="vite/client" />
+import {
+  Outlet,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+  useLocation,
+} from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
+import type { ReactNode } from "react";
+import { AuthProvider } from "~/lib/auth";
+import { ProtectedRoute } from "~/components/protected-route";
+import { MainLayout } from "~/components/layout";
+import { ErrorBoundary } from "~/components/error-boundary";
+import "~/styles.css";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // 1 minute
+      retry: 1,
+    },
+  },
+});
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      {
+        charSet: "utf-8",
+      },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1",
+      },
+      {
+        title: "Taggarr",
+      },
+      {
+        name: "description",
+        content:
+          "Taggarr - Automatic audio language tagging for Sonarr and Radarr media libraries",
+      },
+      {
+        name: "theme-color",
+        content: "#0f172a",
+      },
+      // Open Graph tags for social sharing
+      {
+        property: "og:title",
+        content: "Taggarr",
+      },
+      {
+        property: "og:description",
+        content:
+          "Automatic audio language tagging for Sonarr and Radarr media libraries",
+      },
+      {
+        property: "og:type",
+        content: "website",
+      },
+      {
+        property: "og:image",
+        content: "/apple-touch-icon.svg",
+      },
+      // Twitter Card tags
+      {
+        name: "twitter:card",
+        content: "summary",
+      },
+      {
+        name: "twitter:title",
+        content: "Taggarr",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Automatic audio language tagging for Sonarr and Radarr media libraries",
+      },
+    ],
+    links: [
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "/favicon.svg",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/apple-touch-icon.svg",
+      },
+    ],
+  }),
+  component: RootComponent,
+});
+
+const PUBLIC_ROUTES = ["/login", "/setup"];
+
+function RootComponent() {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ProtectedRoute>
+            <RootDocument>
+              <LayoutWrapper />
+            </RootDocument>
+          </ProtectedRoute>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+}
+
+function LayoutWrapper() {
+  const location = useLocation();
+  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
+
+  if (isPublicRoute) {
+    return <Outlet />;
+  }
+
+  return (
+    <MainLayout>
+      <Outlet />
+    </MainLayout>
+  );
+}
+
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body className="dark">
+        {children}
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "hsl(222.2 84% 4.9%)",
+              border: "1px solid hsl(217.2 32.6% 17.5%)",
+              color: "hsl(210 40% 98%)",
+            },
+          }}
+        />
+        <Scripts />
+      </body>
+    </html>
+  );
+}

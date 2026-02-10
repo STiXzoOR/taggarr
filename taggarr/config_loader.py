@@ -10,11 +10,7 @@ from typing import Optional
 from taggarr.config_schema import (
     Config, DefaultsConfig, InstanceConfig, TagsConfig
 )
-
-
-class ConfigError(Exception):
-    """Configuration loading error."""
-    pass
+from taggarr.exceptions import ConfigError
 
 
 def _get_config_search_paths() -> list:

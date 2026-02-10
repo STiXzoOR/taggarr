@@ -8,8 +8,9 @@ __author__ = "STiXzoOR (fork), BassHous3 (original)"
 __version__ = "0.8.0"
 
 import os
-import time
+import signal
 import logging
+import threading
 
 from taggarr.config_loader import load_config, ConfigError
 from taggarr.config_schema import Config, InstanceConfig
@@ -91,8 +92,26 @@ def _process_instance(instance: InstanceConfig, opts) -> None:
         json_store.save(json_path, taggarr_data, key="movies")
 
 
-def run_loop(opts, config: Config):
-    """Run scans continuously at configured interval."""
-    while True:
+def run_loop(opts, config: Config, stop_event: threading.Event = None):
+    """Run scans continuously at configured interval.
+
+    Args:
+        stop_event: Optional threading.Event to signal shutdown.
+                    If None, creates one with SIGINT/SIGTERM handlers.
+    """
+    if stop_event is None:
+        stop_event = threading.Event()
+
+        def _signal_handler(signum, frame):
+            _logger.info(f"Received signal {signum}, shutting down gracefully...")
+            stop_event.set()
+
+        signal.signal(signal.SIGINT, _signal_handler)
+        signal.signal(signal.SIGTERM, _signal_handler)
+
+    while not stop_event.is_set():
         run(opts, config)
-        time.sleep(config.defaults.run_interval_seconds)
+        stop_event.wait(config.defaults.run_interval_seconds)
+
+    if _logger:
+        _logger.info("Taggarr stopped.")

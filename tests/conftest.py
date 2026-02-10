@@ -7,6 +7,12 @@ from taggarr.config_schema import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _fast_retries(monkeypatch):
+    """Disable tenacity wait times in all tests."""
+    monkeypatch.setattr("tenacity.nap.time.sleep", lambda x: None)
+
+
 @pytest.fixture
 def tags_config():
     """Default tags configuration."""

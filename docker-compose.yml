@@ -1,9 +1,23 @@
 name: Taggarr
 services:
   taggarr:
+    build: .
     image: docker.io/stixzoor/taggarr:latest
     container_name: taggarr
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # API
+      - "3000:3000" # Web UI
     environment:
+      # Timezone
+      - TZ=UTC
+
+      # Logging
+      - TAGGARR_LOG_LEVEL=info
+
+      # Frontend API URL (for SSR)
+      - VITE_API_URL=http://localhost:8080
+
       # Sonarr (TV Shows) - set these to enable TV show scanning
       - SONARR_API_KEY=your_sonarr_api_key
       - SONARR_URL=http://sonarr:8989
@@ -27,10 +41,19 @@ services:
       - LOG_LEVEL=INFO #OPTIONAL - DEBUG/INFO/WARNING/ERROR
       - ADD_TAG_TO_GENRE=false #OPTIONAL - adds "Dub" genre for fully dubbed content
     volumes:
-      - /path/to/your/TV:/tv # TV shows - point to "/tv" container path
-      - /path/to/your/Movies:/movies # Movies - point to "/movies" container path
+      # Config and database persistence
+      - ./config:/config
+      # Media volumes (read-only)
+      - /path/to/your/TV:/tv:ro # TV shows - point to "/tv" container path
+      - /path/to/your/Movies:/movies:ro # Movies - point to "/movies" container path
+      # Logs (optional)
       - /var/log/taggarr:/logs # OPTIONAL - recommended path for logs
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     logging:
       driver: json-file
       options:

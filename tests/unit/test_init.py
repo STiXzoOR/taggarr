@@ -249,28 +249,106 @@ class TestProcessInstance:
 class TestRunLoop:
     """Tests for run_loop function."""
 
-    @patch("taggarr.time.sleep")
     @patch("taggarr.run")
-    def test_calls_run_repeatedly(self, mock_run, mock_sleep, opts, config):
-        # Make sleep raise to break the loop
-        mock_sleep.side_effect = [None, KeyboardInterrupt]
+    def test_calls_run_then_stops(self, mock_run, opts, config):
+        import threading
+        stop = threading.Event()
+        # Signal stop after first run completes
+        mock_run.side_effect = lambda *args: stop.set()
 
-        with pytest.raises(KeyboardInterrupt):
-            run_loop(opts, config)
+        run_loop(opts, config, stop_event=stop)
+
+        mock_run.assert_called_once()
+
+    @patch("taggarr.run")
+    def test_respects_stop_event(self, mock_run, opts, config):
+        import threading
+        stop = threading.Event()
+        stop.set()  # Already stopped
+
+        run_loop(opts, config, stop_event=stop)
+
+        mock_run.assert_not_called()
+
+    @patch("taggarr.run")
+    def test_runs_multiple_cycles_before_stop(self, mock_run, opts, config):
+        import threading
+        config.defaults.run_interval_seconds = 0
+        stop = threading.Event()
+        call_count = [0]
+
+        def track_and_stop(*args):
+            call_count[0] += 1
+            if call_count[0] >= 2:
+                stop.set()
+
+        mock_run.side_effect = track_and_stop
+
+        run_loop(opts, config, stop_event=stop)
 
         assert mock_run.call_count == 2
-        mock_sleep.assert_called_with(config.defaults.run_interval_seconds)
 
-    @patch("taggarr.time.sleep")
+
+class TestRunLoopSignalHandler:
+    """Tests for run_loop signal handler setup when no stop_event provided."""
+
     @patch("taggarr.run")
-    def test_sleeps_for_configured_interval(self, mock_run, mock_sleep, opts, config):
-        config.defaults.run_interval_seconds = 3600  # 1 hour
-        mock_sleep.side_effect = KeyboardInterrupt
+    @patch("taggarr.signal.signal")
+    def test_registers_signal_handlers_when_no_stop_event(
+        self, mock_signal, mock_run, opts, config
+    ):
+        """run_loop registers SIGINT/SIGTERM handlers when stop_event is None."""
+        import signal as sig
+        import taggarr
 
-        with pytest.raises(KeyboardInterrupt):
-            run_loop(opts, config)
+        taggarr._logger = MagicMock()
 
-        mock_sleep.assert_called_with(3600)
+        # Make run() set the internally-created stop event via the signal handler
+        def stop_via_handler(*args):
+            # Find the registered handler and call it
+            for call in mock_signal.call_args_list:
+                if call[0][0] == sig.SIGINT:
+                    handler = call[0][1]
+                    handler(sig.SIGINT, None)
+                    return
+
+        mock_run.side_effect = stop_via_handler
+
+        run_loop(opts, config, stop_event=None)
+
+        # Verify signal handlers were registered
+        signal_calls = [call[0][0] for call in mock_signal.call_args_list]
+        assert sig.SIGINT in signal_calls
+        assert sig.SIGTERM in signal_calls
+
+    @patch("taggarr.run")
+    @patch("taggarr.signal.signal")
+    def test_signal_handler_sets_stop_event(self, mock_signal, mock_run, opts, config):
+        """Signal handler sets the internal stop event."""
+        import signal as sig
+        import taggarr
+
+        taggarr._logger = MagicMock()
+
+        captured_handler = [None]
+
+        def capture_handler(signum, handler):
+            if signum == sig.SIGINT:
+                captured_handler[0] = handler
+
+        mock_signal.side_effect = capture_handler
+
+        # After first run, invoke the captured handler
+        def trigger_stop(*args):
+            if captured_handler[0]:
+                captured_handler[0](sig.SIGINT, None)
+
+        mock_run.side_effect = trigger_stop
+
+        run_loop(opts, config, stop_event=None)
+
+        mock_run.assert_called_once()
+        taggarr._logger.info.assert_any_call("Taggarr stopped.")
 
 
 class TestProcessInstanceEdgeCases:

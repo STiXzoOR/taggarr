@@ -94,3 +94,6 @@ logs/
 *.log
 old/
 .worktrees/
+
+# Unignore frontend lib (overrides Python lib/ pattern above)
+!frontend/src/lib/
